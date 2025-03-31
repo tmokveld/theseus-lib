@@ -19,6 +19,9 @@
  * @tparam Allocator The type of the allocator used by the vector.
  */
 
+// TODO: Add automatic realloc with a policy? This would change the foundation
+// of the implementation but it can be useful.
+
 namespace theseus {
 
 template <typename T, typename Allocator = std::allocator<T>>
