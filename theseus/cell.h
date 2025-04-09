@@ -19,12 +19,16 @@ struct Cell {
     using pos_t = int32_t;
     using score_t = int32_t;
 
-    enum class FromMatrix : int8_t {
+    enum class Matrix : int8_t {
         None,
         M,
-        MJump,
-        IJump,
-        I2Jump
+        MJumps,
+        I,
+        IJumps,
+        D,
+        I2,
+        I2Jumps,
+        D2
     };
 
     vertex_t vertex_id;
@@ -32,7 +36,7 @@ struct Cell {
     idx2d_t diag;
     pos_t prev_pos;
     score_t score_diff;
-    FromMatrix from_matrix;
+    Matrix from_matrix;
 };
 
 }   // namespace theseus

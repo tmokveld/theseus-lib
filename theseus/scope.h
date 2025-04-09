@@ -44,6 +44,10 @@ public:
         _squeue[_squeue.score()].resize(0);
     }
 
+    int size() {
+        return _squeue.nscores();
+    }
+
     // TODO:
     std::vector<Cell> &i_wf(int score) {
         return _squeue[score]._i_wf;

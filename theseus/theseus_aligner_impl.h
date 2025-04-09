@@ -1,5 +1,17 @@
 #pragma once
 
+#include <memory>
+#include <string_view>
+
+#include "alignment.h"
+#include "beyond_scope.h"
+#include "graph.h"
+#include "internal_penalties.h"
+#include "penalties.h"
+#include "scope.h"
+#include "scratchpad.h"
+#include "vertices_data.h"
+
 namespace theseus {
 
 class TheseusAlignerImpl {
@@ -29,17 +41,19 @@ private:
     Penalties _orig_penalties;
     InternalPenalties _penalties;
 
-    Graph _graph; // TODO:
+    Graph _graph;   // TODO:
 
     bool _is_msa;
     bool _is_score_only;
 
-    std::unique_ptr<ScratchPad> _scratchpad; // TODO: Scratchpad inside scope?
+    std::unique_ptr<ScratchPad> _scratchpad;   // TODO: Scratchpad inside scope?
 
     std::unique_ptr<Scope> _scope;
     std::unique_ptr<BeyondScope> _beyond_scope;
 
     std::unique_ptr<VerticesData> _vertices_data;
+
+    std::string_view _seq;
 };
 
 }   // namespace theseus

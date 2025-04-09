@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
+#include <vector>
 
 #include "cell.h"
 #include "circular_queue.h"
@@ -15,7 +15,7 @@
 
 namespace theseus {
 
-class VerticesData { // TODO: Other name?
+class VerticesData {   // TODO: Other name?
 public:
     struct Segment {
         int32_t start_d;
@@ -24,18 +24,29 @@ public:
 
     struct InvalidData {
         Segment seg;        // Invalid diagonals
-        int32_t rem_up;     // Remaining scores to grow the segment one diagonal up
-        int32_t rem_down;   // Remaining scores to grow the segment one diagonal down
+        int32_t rem_up;     // Remaining scores to grow the segment one diagonal
+                            // up
+        int32_t rem_down;   // Remaining scores to grow the segment one diagonal
+                            // down
     };
 
-    VerticesData(int nvertices) {
+    // TODO:
+    VerticesData(InternalPenalties &penalties, int nscores, int nexpected_vertices)
+        : _penalties(penalties), _jumps_pos(nscores) {
 
+        _active_vertices.reserve(nexpected_vertices);
+
+        for (int s = 0; s < _jumps_pos.nscores(); ++s) {
+            auto &sjpos = _jumps_pos[s];
+            sjpos._m_jumps_positions.reserve(nexpected_vertices);
+            sjpos._i_jumps_positions.reserve(nexpected_vertices);
+        }
     }
 
     // TODO: Compact the invalid vectors.
-    void compact(std::vector<InvalidData> &invalid_v,
-                 int default_rem_up,
-                 int default_rem_down) {
+    void compact_invalid_vector(std::vector<InvalidData> &invalid_v,
+                                int default_rem_up,
+                                int default_rem_down) {
 
         if (invalid_v.size() == 0) {
             return;
@@ -54,14 +65,15 @@ public:
             // You should compact them
             if (invalid_v[k].seg.end_d + 1 >= invalid_v[l].seg.start_d) {
                 // Update segment
-                invalid_v[k].seg.end_d = std::max(invalid_v[l].seg.end_d, invalid_v[k].seg.end_d);
+                invalid_v[k].seg.end_d = std::max(invalid_v[l].seg.end_d,
+                                                  invalid_v[k].seg.end_d);
 
                 // Update remaining down scores
                 invalid_v[k].rem_down = std::min(invalid_v[k].rem_down,
                                                  invalid_v[l].rem_down +
                                                      (invalid_v[l].seg.start_d -
                                                       invalid_v[k].seg.start_d) *
-                                                         INDEL_EXTEND);
+                                                         default_rem_down);
 
                 // Update remaining up scores
                 if (invalid_v[l].seg.end_d > invalid_v[k].seg.end_d) {
@@ -69,14 +81,14 @@ public:
                                                    invalid_v[k].rem_up +
                                                        (invalid_v[l].seg.end_d -
                                                         invalid_v[k].seg.end_d) *
-                                                           INDEL_EXTEND);
+                                                           default_rem_up);
                 }
                 else {
                     invalid_v[k].rem_up = std::min(invalid_v[k].rem_up,
-                                                   ordered_v[l].rem_up +
+                                                   invalid_v[l].rem_up +
                                                        (invalid_v[k].seg.end_d -
                                                         invalid_v[l].seg.end_d) *
-                                                           INDEL_EXTEND);
+                                                           default_rem_up);
                 }
             }
             else {
@@ -119,26 +131,138 @@ public:
             // expand_invalid_vector(vdata._d2_invalid, TODO, TODO);
         }
     }
-    
+
     // TODO: Compact the invalid vectors.
     void compact() {
         for (int l = 0; l < _active_vertices.size(); ++l) {
             compact_invalid_vector(_active_vertices[l]._m_invalid, TODO, TODO);
             compact_invalid_vector(_active_vertices[l]._i_invalid, TODO, TODO);
             // TODO:
-            // compact_invalid_vector(_active_vertices[l]._i2_invalid, TODO, TODO);
+            // compact_invalid_vector(_active_vertices[l]._i2_invalid, TODO,
+            // TODO);
             compact_invalid_vector(_active_vertices[l]._d_invalid, TODO, TODO);
             // TODO:
-            // compact_invalid_vector(_active_vertices[l]._d2_invalid, TODO, TODO);
+            // compact_invalid_vector(_active_vertices[l]._d2_invalid, TODO,
+            // TODO);
         }
     }
 
+    void invalidate_i_jump(int idx, int diag) {
+        VertexData &vdata = _active_vertices[idx];
+
+        InvalidData new_invalid;
+
+        new_invalid.rem_down = _penalties.gapo() + _penalties.del();
+        new_invalid.rem_up = _penalties.ins();
+        new_invalid.seg.start_d = diag;
+        new_invalid.seg.end_d = diag;
+
+        vdata._m_invalid.push_back(new_invalid);
+
+        // New invalid in I
+        new_invalid.rem_down = 2 * _penalties.gapo() + 3 * _penalties.del();
+        new_invalid.rem_up = _penalties.ins();
+        new_invalid.seg.start_d = diag;
+        new_invalid.seg.end_d = diag;
+        vdata._i_invalid.push_back(new_invalid);
+
+        // New invalid in D (initially empty)
+        new_invalid.rem_down = _penalties.gapo() + _penalties.del();
+        new_invalid.rem_up = _penalties.gapo() + 2 * _penalties.ins();
+        new_invalid.seg.start_d = diag;
+        new_invalid.seg.end_d = diag - 1;
+        vdata._d_invalid.push_back(new_invalid);
+    }
+
+    void invalidate_m_jump(int idx, int diag) {
+        VertexData &vdata = _active_vertices[idx];
+
+        InvalidData new_invalid;
+
+        new_invalid.rem_down = _penalties.gapo() + _penalties.del();
+        new_invalid.rem_up = _penalties.gapo() + _penalties.ins();
+        new_invalid.seg.start_d = diag;
+        new_invalid.seg.end_d = diag;
+
+        vdata._m_invalid.push_back(new_invalid);
+
+        // New invalid in I
+        new_invalid.rem_down = 2 * (_penalties.gapo() + _penalties.del());
+        new_invalid.rem_up = _penalties.gapo() + _penalties.ins();
+        new_invalid.seg.start_d = diag + 1;
+        new_invalid.seg.end_d = diag;
+        vdata._i_invalid.push_back(new_invalid);
+
+        // New invalid in D (initially empty)
+        new_invalid.rem_down = _penalties.gapo() + _penalties.del();
+        new_invalid.rem_up = 2 * (_penalties.gapo() + _penalties.ins());
+        new_invalid.seg.start_d = diag;
+        new_invalid.seg.end_d = diag - 1;
+        vdata._d_invalid.push_back(new_invalid);
+    }
+
+    bool is_active(int v) {
+        if (v > _vertex_to_idx.size()) {
+            return false;
+        }
+
+        return _vertex_to_idx[v] != -1;
+    }
+
+    void activate_vertex(int v) {
+        if (!is_active(v)) {
+            if (v > _vertex_to_idx.size()) {
+                _vertex_to_idx.resize(v + 1, -1);
+            }
+
+            _vertex_to_idx[v] = _active_vertices.size();
+            _active_vertices.push_back(v);
+            _jumps_pos.resize(_jumps_pos.size() + 1);
+            _jumps_pos[_vertex_to_idx[v]]._i_jumps_positions.resize(_squeue.size());
+            _jumps_pos[_vertex_to_idx[v]]._m_jumps_positions.resize(_squeue.size());
+        }
+    }
+
+    template <Cell::Matrix matrix>
+    bool valid_diagonal(int idx, int diag) {
+        VertexData &vdata = _active_vertices[idx];
+
+        std::vector<InvalidData> *invalid = nullptr;
+
+        if constexpr (matrix == Cell::Matrix::M) {
+            invalid = &vdata._m_invalid;
+        }
+        else if constexpr (matrix == Cell::Matrix::I) {
+            invalid = &vdata._i_invalid;
+        }
+        else if constexpr (matrix == Cell::Matrix::D) {
+            invalid = &vdata._d_invalid;
+        }
+        else if constexpr (matrix == Cell::Matrix::I2) {
+            invalid = &vdata._i2_invalid;
+        }
+        else if constexpr (matrix == Cell::Matrix::D2) {
+            invalid = &vdata._d2_invalid;
+        }
+        else {
+            static_assert(dependent_false<decltype(matrix)>,
+                          "Invalid matrix type");
+        }
+
+        for (int l = 0; l < invalid->size(); ++l) {
+            if ((*invalid)[l].seg.start_d <= diag &&
+                diag <= (*invalid)[l].seg.end_d) {
+                return false;
+            }
+        }
+        return true;
+    }
 
 private:
     InternalPenalties &_penalties;
 
     struct VertexData {
-        Cell::vertex_id vertex_id;
+        Cell::vertex_t vertex_id;
 
         std::vector<InvalidData> _m_invalid;
 
@@ -147,18 +271,16 @@ private:
 
         std::vector<InvalidData> _d_invalid;
         std::vector<InvalidData> _d2_invalid;
+
+        // Scope with the positions of M jumps in the scope previous waves
+        std::vector<std::vector<int32_t>> _m_jumps_positions;
+
+        // Scope with the positions of I jumps in the scope previous waves
+        std::vector<std::vector<int32_t>> _i_jumps_positions;
     };
 
     std::vector<VertexData> _active_vertices;
-
-    struct JumpsPos {
-        // Scope with the positions of M jumps in the scope previous waves
-        std::vector<std::vector<int32_t>> m_jumps_positions;
-        // Scope with the positions of I jumps in the scope previous waves
-        std::vector<std::vector<int32_t>> i_jumps_positions;
-    };
-
-    CircularQueue<JumpsPos> _jumps_pos;
+    std::vector<Cell::vertex_t> _vertex_to_idx;
 };
 
-} // namespace theseus
+}   // namespace theseus
