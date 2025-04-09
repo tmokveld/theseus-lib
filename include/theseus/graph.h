@@ -37,7 +37,7 @@ class POAGraph {
         };
 
         struct POA_edge
-        { 
+        {
             std::vector<int> sequence_IDs;
             int source;
             int destination;

@@ -216,10 +216,12 @@ public:
             }
 
             _vertex_to_idx[v] = _active_vertices.size();
-            _active_vertices.push_back(v);
-            _jumps_pos.resize(_jumps_pos.size() + 1);
-            _jumps_pos[_vertex_to_idx[v]]._i_jumps_positions.resize(_squeue.size());
-            _jumps_pos[_vertex_to_idx[v]]._m_jumps_positions.resize(_squeue.size());
+
+            // Create the new vertex
+            _active_vertices.resize(_vertex_to_idx[v] + 1);
+            _active_vertices[_vertex_to_idx[v]].vertex_id = v;
+            _active_vertices[_vertex_to_idx[v]]._i_jumps_positions.reserve(_squeue.size());
+            _active_vertices[_vertex_to_idx[v]]._m_jumps_positions.reserve(_squeue.size());
         }
     }
 

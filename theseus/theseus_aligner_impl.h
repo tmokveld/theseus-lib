@@ -11,15 +11,18 @@
 #include "scope.h"
 #include "scratchpad.h"
 #include "vertices_data.h"
+#include "cell.h"
 
 namespace theseus {
 
 class TheseusAlignerImpl {
 public:
-    TheseusAlignerImpl(Penalties penalties, bool msa, bool score_only);
+    TheseusAlignerImpl(Penalties penalties, Graph &graph, bool msa, bool score_only);
+
+    void process_vertex(Graph::vertex* curr_v, int v);
 
     // TODO:
-    void add_to_graph(std::strig_view seq);
+    void add_to_graph(std::string_view seq);
 
     // TODO:
     Alignment align(std::string_view seq);
@@ -36,7 +39,7 @@ private:
     // template <Penalties::Type gap_type>
     void backtrace(Alignment& alignment);
 
-    int32_t _score;
+    int32_t _score = 0;
 
     Penalties _orig_penalties;
     InternalPenalties _penalties;
@@ -45,6 +48,9 @@ private:
 
     bool _is_msa;
     bool _is_score_only;
+    bool _end = false;
+    int _end_vertex;
+    Cell _start_pos;
 
     std::unique_ptr<ScratchPad> _scratchpad;   // TODO: Scratchpad inside scope?
 

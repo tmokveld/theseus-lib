@@ -1,0 +1,21 @@
+{
+  "C_Cpp.default.compilerPath": "/usr/bin/g++",
+  "files.associations": {
+    "ratio": "cpp",
+    "array": "cpp",
+    "functional": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "utility": "cpp",
+    "memory": "cpp",
+    "random": "cpp",
+    "deque": "cpp",
+    "string": "cpp",
+    "vector": "cpp",
+    "unordered_map": "cpp",
+    "unordered_set": "cpp",
+    "string_view": "cpp",
+    "initializer_list": "cpp",
+    "span": "cpp"
+  }
+}
