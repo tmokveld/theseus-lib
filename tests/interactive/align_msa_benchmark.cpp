@@ -135,6 +135,7 @@ CMDArgs parse_args(int argc, char *const *argv) {
     return args;
 }
 
+
 int main(int argc, char *const *argv) {
     // Parsing
     CMDArgs args = parse_args(argc, argv);

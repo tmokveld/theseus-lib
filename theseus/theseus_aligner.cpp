@@ -32,6 +32,7 @@ TheseusAligner::TheseusAligner(const Penalties &penalties,
     _aligner_impl = std::make_unique<TheseusAlignerImpl>(penalties, std::move(G), true, score_only);
 }
 
+
 TheseusAligner::TheseusAligner(const Penalties &penalties,
                                const Graph &graph,
                                bool msa,

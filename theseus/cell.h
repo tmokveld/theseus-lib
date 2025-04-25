@@ -4,6 +4,8 @@
 #include <type_traits>
 #include <typeinfo>
 
+#include "growing_allocator.h"
+
 /**
  * TODO:
  *
@@ -12,12 +14,14 @@
 namespace theseus {
 
 // WARNING: We want Cell to be a simple struct so it is standard layout and
-// trivial. This way, resizes of ManualCapacityVector<Cell> are free.
+// trivial. This way, resizes of Vector<Cell> are free.
 struct Cell {
     using vertex_t = int32_t; // TODO: This should be here?
     using idx2d_t = int32_t;
     using pos_t = int32_t;
     using score_t = int32_t;
+
+    using Wavefront = std::vector<Cell, GrowingAllocator<Cell>>;
 
     enum class Matrix : int8_t {
         None,

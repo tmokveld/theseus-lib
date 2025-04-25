@@ -67,7 +67,7 @@ private:
      * @param new_score_diff
      * @param prev_matrix
      */
-    void sparsify_M_data(std::vector<Cell> &dense_wf,
+    void sparsify_M_data(Cell::Wavefront &dense_wf,
                          int offset_increase,
                          int shift_factor,
                          int start_idx,
@@ -92,7 +92,7 @@ private:
      * @param new_score_diff
      * @param prev_matrix
      */
-    void sparsify_jumps_data(std::vector<Cell> &dense_wf,
+    void sparsify_jumps_data(Cell::Wavefront &dense_wf,
                              std::vector<int> &jumps_positions,
                              int offset_increase,
                              int shift_factor,
