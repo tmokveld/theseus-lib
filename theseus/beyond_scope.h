@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "cell.h"
-#include "wavefront_mem_pool.h"
-#include "growing_allocator.h"
+#include "mem_pool_wavefront.h"
+#include "mem_pool_allocator.h"
 #include "vector.h"
 
 /**
@@ -118,10 +118,10 @@ public:
 
 private:
     // Memory pools for faster realloc.
-    WavefrontMemPool _m_wf_mem_pool;
-    WavefrontMemPool _m_jumps_mem_pool;
-    WavefrontMemPool _i_jumps_mem_pool;
-    WavefrontMemPool _i2_jumps_mem_pool;
+    MemPoolWavefront _m_wf_mem_pool;
+    MemPoolWavefront _m_jumps_mem_pool;
+    MemPoolWavefront _i_jumps_mem_pool;
+    MemPoolWavefront _i2_jumps_mem_pool;
 
     struct ScoreData {
         Cell::Wavefront _m_wf;
@@ -129,10 +129,10 @@ private:
         Cell::Wavefront _i_jumps;
         Cell::Wavefront _i2_jumps;
 
-        ScoreData(WavefrontMemPool *const m_wf_mem_pool,
-                  WavefrontMemPool *const m_jumps_mem_pool,
-                  WavefrontMemPool *const i_jumps_mem_pool,
-                  WavefrontMemPool *const i2_jumps_mem_pool) :
+        ScoreData(MemPoolWavefront *const m_wf_mem_pool,
+                  MemPoolWavefront *const m_jumps_mem_pool,
+                  MemPoolWavefront *const i_jumps_mem_pool,
+                  MemPoolWavefront *const i2_jumps_mem_pool) :
             _m_wf(GrowingAllocator<Cell>{m_wf_mem_pool}),
             _m_jumps(GrowingAllocator<Cell>{m_jumps_mem_pool}),
             _i_jumps(GrowingAllocator<Cell>{i_jumps_mem_pool}),

@@ -1,10 +1,9 @@
 #pragma once
 
-#include "growing_mem_pool.h"
+#include "mem_pool.h"
 
 /**
- * STL allocator (wrapper) for memory pools that only can allocate memory and
- * never free it.
+ * STL allocator (wrapper) for memory pools.
  *
  * An STL allocator must have no state, so we cannot store the memory
  * pool in the allocator. Instead, we store a pointer to the memory
@@ -17,14 +16,16 @@ template <class T>
 class GrowingAllocator {
 public:
     using value_type = T;
-    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_move_assignment =
+          MemPool::propagate_on_container_move_assignment;
+    using realloc_possible = std::true_type;
 
     /**
      * Construct an allocator that uses the given memory pool.
      *
-     * @param mem_pool A GrowingMemPool.
+     * @param mem_pool A MemPool.
      */
-    GrowingAllocator(GrowingMemPool *mem_pool) noexcept : _mem_pool(mem_pool){};
+    GrowingAllocator(MemPool *mem_pool) noexcept : _mem_pool(mem_pool){};
 
     /**
      * Copy constructor.
@@ -92,40 +93,53 @@ public:
     }
 
     /**
-     * We do not do anything, since a GrowingAllocator just grows.
+     * Deallocate memory for num elements of type value_type.
      *
-     * @param p Unused.
+     * @param p The pointer to the memory to deallocate.
      */
-    void deallocate([[maybe_unused]] value_type *p, [[maybe_unused]] std::size_t) {
-        // We don't do anything, we just grow.
+    void deallocate(value_type *p, std::size_t num) {
+        _mem_pool->deallocate(p, num * sizeof(value_type));
     }
 
     /**
-     * true only if the storage allocated by this can be deallocated
-     * through the other allocator. We do not really deallocate, so
-     * always true.
+     * Reallocate memory from @p p to hold at least @p num_elements of type
+     * value_type.
+     *
+     * @param p The pointer to the memory to reallocate.
+     * @param num The number of elements to reallocate.
+     * @return value_type* A pointer to the reallocated memory.
+     */
+    // value_type *reallocate(value_type* p, std::size_t num) {
+    //     return static_cast<value_type*>(_mem_pool->reallocate(p, num * sizeof(value_type)));
+    // }
+
+    /**
+     * True only if the storage allocated by this can be deallocated
+     * through the other allocator. Ask the memory pool.
      *
      * @tparam U The type of the other allocator.
-     * @return bool True.
+     * @return bool True if the storage can be deallocated through the other
+     * allocator.
      */
     template <class U>
-    bool operator==(const GrowingAllocator<U> &) const {
-        return true;
+    bool operator==(const GrowingAllocator<U> &other) const {
+        return (*_mem_pool) == other->mem_pool;
     }
 
     /**
      * The inverse to == operator.
      *
      * @tparam U The type of the other allocator.
-     * @return bool False.
+     * @return bool True if the storage cannot be deallocated through the other
+     * allocator.
      */
     template <class U>
-    bool operator!=(const GrowingAllocator<U> &) const {
-        return false;
+    bool operator!=(const GrowingAllocator<U> &other) const {
+        return (*_mem_pool) != other->mem_pool;
     }
 
 private:
-    GrowingMemPool *_mem_pool;
+    MemPool *_mem_pool;
 
     // Add a friend declaration for the rebind constructor
     template <class U>
