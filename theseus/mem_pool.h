@@ -6,8 +6,6 @@
  * It is not guaranteed that a MemPool works in multi-threaded applications.
  */
 
-// TODO: Realloc useful?
-
 namespace theseus {
 
 class MemPool {

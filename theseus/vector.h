@@ -15,52 +15,37 @@
  * required. However, the user can provide a reallocation policy that will be
  * used to reallocate the vector when the required size is greater than
  * the current capacity. The reallocation policy must be a callable object that
- * takes the current capacity (std::ptrdiff_t) and the required size
- * (std::ptrdiff_t) as arguments and returns the new capacity (std::ptrdiff_t).
- * It is assumed that the new capacity provided by the policy is greater or
- * equal to the required size.
+ * takes the current capacity (size_type) and the required size (size_type) as
+ * arguments and returns the new capacity (size_type). It is assumed that the
+ * new capacity provided by the policy is greater or equal to the required size.
  *
- * If the elements stored in the vector are both standard layout and trivial,
- * calling to the default constructor and destructor is avoided when resizing
- * the vector. This improves the performance of the vector but the value of the
+ * In case the elements stored in the vector are both standard layout and
+ * trivial, the template parameter avoid_init_if_possible can be set to true to
+ * avoid calling the default constructor and destructor when resizing the
+ * vector. This improves the performance of the vector but the value of the
  * elements is not guaranteed to be the same as the default value of the type.
  *
  * @tparam T The type of the elements stored in the vector.
- * @tparam ReallocPolicy The policy used to reallocate the vector. The
- * default policy is nullptr, which means that the vector will not be
- * reallocated. If a policy is provided, it must be a callable object that
- * takes the current capacity (std::ptrdiff_t) and the required size
- * (std::ptrdiff_t) as arguments and returns the new capacity
- * (std::ptrdiff_t). It is assumed that the new capacity provided
- * is greater or equal to the required size.
+ * @tparam avoid_init_if_possible If true, the default constructor and
+ * destructor are avoided when T is standard layout and trivial. This improves
+ * the performance of the vector but the value of the elements is not guaranteed
+ * to be the same as the default value of the type. If false, the default
+ * constructor and destructor are always called when resizing the vector.
  * @tparam Allocator The type of the allocator used by the vector.
  */
 
 namespace theseus {
 
-template <typename T, auto ReallocPolicy = nullptr, typename Allocator = std::allocator<T>>
-requires(ReallocPolicy == nullptr ||
-requires(std::ptrdiff_t c, std::ptrdiff_t s) {
-    { ReallocPolicy(c, s) } -> std::same_as<std::ptrdiff_t>;
-})
+template <typename T, bool avoid_init_if_possible = false, typename Allocator = std::allocator<T>>
 class Vector {
 public:
-    using allocator_type = Allocator;
-    using alloc_traits = std::allocator_traits<allocator_type>;
-    using value_type = T;
-    using size_type = std::ptrdiff_t;
-    using reference = value_type&;
-    using const_reference = const value_type&;
-    using pointer = typename alloc_traits::pointer;
-    using const_pointer = typename alloc_traits::const_pointer;
-
     /**
      * Iterator for the Vector.
      *
      */
     class Iterator {
     public:
-        using iterator_category = std::forward_iterator_tag;
+        using iterator_category = std::bidirectional_iterator_tag;
         using value_type = T;
         using difference_type = std::ptrdiff_t;
         using pointer = const T*;
@@ -92,6 +77,27 @@ public:
             Iterator temp = *this;
             ++(*this);
             return temp;
+        }
+
+        /**
+         * Pre-decrement operator.
+         *
+         * @return Reference to the current iterator.
+         */
+        Iterator &operator--() {
+            _ptr--;
+            return *this;
+        }
+
+        /**
+         * Post-decrement operator.
+         *
+         * @return Copy of the iterator before decrementing.
+         */
+        Iterator operator--(int) {
+            Iterator tmp = *this;
+            --_ptr;
+            return tmp;
         }
 
         /**
@@ -132,59 +138,73 @@ public:
         T *_ptr;
     };
 
+    using allocator_type = Allocator;
+    using alloc_traits = std::allocator_traits<allocator_type>;
+    using value_type = T;
+    using size_type = std::ptrdiff_t;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using pointer = typename alloc_traits::pointer;
+    using const_pointer = typename alloc_traits::const_pointer;
+    using realloc_policy = std::function<size_type(size_type, size_type)>;
+    using iterator = Iterator;
+    using const_iterator = const Iterator;
+    using reverse_iterator = std::reverse_iterator<Iterator>;
+
     /**
-     * Create an empty vector. Both the size and capacity are 0.
+     * Create an empty vector. Both the size and capacity are 0 and there is no
+     * reallocation policy.
      *
      */
-    Vector()
-        : _alloc(Allocator()), _size(0), _capacity(0), _data(nullptr) {
-    }
+    Vector() noexcept(noexcept(Allocator())) : Vector(Allocator()) {}
 
     /**
-     * Create an empty vector with a given allocator. Both the size and capacity
-     * are 0.
-     * 
-     * @param alloc The allocator to use.
-     */
-    explicit Vector(const Allocator& alloc)
-        : _alloc(alloc), _size(0), _capacity(0), _data(nullptr) {}
-
-    /**
-     * Create an vector with a given size. The capacity is equal to the size.
+     * Create an empty vector with a given allocator @p alloc. Both the size and
+     * capacity are 0 and there is no reallocation policy.
      *
-     * @param size The size of the vector.
      * @param alloc The allocator to use.
      */
-    explicit Vector(size_type size, const Allocator& alloc = Allocator())
-        : _alloc(alloc), _size(size), _capacity(size), _data(nullptr) {
-        if (size < 0) {
-            throw std::length_error("Vector: size < 0");
-        }
-
-        allocate();
-
-        if constexpr (!avoid_init()) {
-            construct_elements(T());
-        }
-    }
+    explicit Vector(const Allocator &alloc) : _alloc(alloc) {}
 
     /**
-     * Create an vector with a given size and initialize all elements to a given
-     * value. The capacity is equal to the size.
+     * Create an vector with a given size @p size and optional allocator @p
+     * alloc. The capacity is equal to the size and there is no reallocation
+     * policy.
      *
      * @param size The size of the vector.
-     * @param value The value to initialize all elements of the vector.
      * @param alloc The allocator to use.
      */
-    Vector(size_type size, const T &value, const Allocator& alloc = Allocator())
-        : _alloc(alloc), _size(size), _capacity(size), _data(nullptr) {
+    Vector(size_type size, const Allocator &alloc = Allocator())
+        : _alloc(alloc), _size(size), _capacity(size) {
 
         if (size < 0) {
             throw std::length_error("Vector: size < 0");
         }
 
-        allocate();
-        construct_elements(value);
+        _data = allocate_ptr(_capacity);
+
+        default_construct_elements(_data, _size);
+    }
+
+    /**
+     * Create an vector with a given size @p size and initialize all elements to
+     * a given value @p value. The capacity is equal to the size and there is no
+     * reallocation policy. The constructor takes an optional allocator @p
+     * alloc.
+     *
+     * @param size The size of the vector.
+     * @param value The value to copy initialize all elements of the vector.
+     * @param alloc The allocator to use (optional).
+     */
+    Vector(size_type size, const T &value, const Allocator &alloc = Allocator())
+        : _alloc(alloc), _size(size), _capacity(size) {
+
+        if (size < 0) {
+            throw std::length_error("Vector: size < 0");
+        }
+
+        _data = allocate_ptr(_capacity);
+        copy_construct_elements<true>(_data, _size, &value);
     }
 
     /**
@@ -192,12 +212,13 @@ public:
      *
      * @param other Source vector to copy.
      */
-    Vector(const Vector<T> &other)
-        : _alloc(alloc_traits::select_on_container_copy_construction(other._alloc)),
-          _size(other._size), _capacity(other._capacity), _data(nullptr) {
+    Vector(const Vector &other)
+        : _realloc_policy(other._realloc_policy),
+          _alloc(alloc_traits::select_on_container_copy_construction(other._alloc)),
+          _size(other._size), _capacity(other._capacity) {
 
-        allocate();
-        copy_elements(other._data);
+        _data = allocate_ptr(_capacity);
+        copy_construct_elements<false>(_data, other._data, _size);
     }
 
     /**
@@ -205,8 +226,9 @@ public:
      *
      * @param other Source vector to move.
      */
-    Vector(Vector<T> &&other) noexcept
-        : _alloc(std::move(other._alloc)),
+    Vector(Vector &&other) noexcept
+        : _realloc_policy(other._realloc_policy),
+          _alloc(std::move(other._alloc)),
           _size(other._size), _capacity(other._capacity), _data(other._data) {
 
         other._size = 0;
@@ -225,16 +247,14 @@ public:
             return *this;
         }
 
-        if constexpr (!avoid_init()) {
-            destroy_elements();
-        }
+        destroy_elements(_data, _size);
 
         constexpr bool propagate_alloc = alloc_traits::propagate_on_container_copy_assignment::value;
         const bool reallocate = (propagate_alloc && _alloc != other._alloc) ||
                                 _capacity != other._capacity;
 
         if (reallocate) {
-            deallocate();
+            deallocate_ptr(&_data);
         }
 
         if (propagate_alloc) {
@@ -243,11 +263,13 @@ public:
 
         if (reallocate) {
             _capacity = other._capacity;
-            allocate();
+            _data = allocate_ptr(_capacity);
         }
 
         _size = other._size;
-        copy_elements(other._data);
+        copy_construct_elements<false>(_data, other._data, _size);
+
+        _realloc_policy = other._realloc_policy;
 
         return *this;
     }
@@ -263,18 +285,16 @@ public:
             return *this;
         }
 
-        if constexpr (!avoid_init()) {
-            destroy_elements();
-        }
+        destroy_elements(_data, _size);
 
         // We can safely move the data.
         if (alloc_traits::propagate_on_container_move_assignment::value ||
             _alloc == other._alloc) {
 
-            deallocate();
+            deallocate_ptr(&_data);
 
+            _realloc_policy = std::move(other._realloc_policy);
             _alloc = std::move(other._alloc);
-
             _size = other._size;
             _capacity = other._capacity;
             _data = other._data;
@@ -285,15 +305,17 @@ public:
         }
         // We need to copy the elements using the current allocator.
         else {
+            _realloc_policy = other._realloc_policy;
+
             if (_capacity < other._capacity) {
-                deallocate();
+                deallocate_ptr(&_data);
 
                 _capacity = other._capacity;
-                allocate();
+                _data = allocate_ptr(_capacity);
             }
 
             _size = other._size;
-            move_elements(other._data);
+            move_construct_elements(_data, other._data, _size);
         }
 
         return *this;
@@ -304,10 +326,8 @@ public:
      *
      */
     ~Vector() {
-        if constexpr (!avoid_init()) {
-            destroy_elements();
-        }
-        deallocate();
+        destroy_elements(_data, _size);
+        deallocate_ptr(&_data);
     }
 
     /**
@@ -318,27 +338,28 @@ public:
      * @param new_capacity The new capacity of the vector.
      */
     void realloc(size_type new_capacity) {
-        if (new_capacity < 0 || new_capacity < _size) {
-            throw std::length_error(
-                "Vector: new_capacity < 0 or new_capacity < _size");
-        }
-
         if (new_capacity == _capacity) {
             return;
         }
-
-        T *new_data;
-        allocate_ptr(new_capacity, &new_data);
-
-        for (size_type i = 0; i < _size; ++i) {
-            construct_element(new_data + i, std::move(_data[i]));
-
-            if constexpr (!avoid_init()) {
-                destroy_element(_data + i);
-            }
+        else if (new_capacity < 0) {
+            throw std::length_error("Vector: new_capacity < 0");
+        }
+        else if (new_capacity < _size) {
+            throw std::length_error("Vector: new_capacity < _size");
         }
 
-        deallocate();
+        // if constexpr (allocator_implements_reallocate) {
+        //     // realloc provided by the allocator.
+        //     _alloc.reallocate(_data, _size, new_capacity);
+        // }
+        // else {
+
+        T *new_data = allocate_ptr(new_capacity);
+
+        move_construct_elements(new_data, _data, _size);
+
+        destroy_elements(_data, _size);
+        deallocate_ptr(&_data);
 
         _data = new_data;
         _capacity = new_capacity;
@@ -346,7 +367,7 @@ public:
 
     /**
      * Resize the vector to a new size. The new size must be greater than or
-     * equal to 0. If the vector has a ReallocPolicy and the new size is greater
+     * equal to 0. If the vector has a realloc_policy and the new size is greater
      * than the current capacity, the vector will be reallocated using the
      * policy. Otherwise, a std::length_error will be thrown.
      *
@@ -358,14 +379,14 @@ public:
     }
 
     /**
-     * Resize the vector to a new size and initialize all new elements to a
+     * Resize the vector to a new size and copy initialize all new elements to a
      * given value. The new size must be greater than or equal to 0. If the
-     * vector has a ReallocPolicy and the new size is greater than the current
+     * vector has a realloc_policy and the new size is greater than the current
      * capacity, the vector will be reallocated using the policy. Otherwise, a
      * std::length_error will be thrown.
      *
      * @param new_size The new size of the vector.
-     * @param value The value to initialize all new elements of the vector.
+     * @param value The value to copy initialize all new elements of the vector.
      */
     void resize(size_type new_size, const T &value) {
         resize_prepare(new_size);
@@ -379,13 +400,11 @@ public:
      * @param new_size The new size of the vector.
      */
     void resize_unsafe(size_type new_size) {
-        if constexpr (!avoid_init()) {
-            if (new_size > _size) {
-                construct_elements_range(_size, new_size, T());
-            }
-            else if (new_size < _size) {
-                destroy_elements_range(new_size, _size);
-            }
+        if (new_size > _size) {
+            default_construct_elements(_data + _size, new_size - _size);
+        }
+        else if (new_size < _size) {
+            destroy_elements(_data + new_size, _size - new_size);
         }
 
         _size = new_size;
@@ -393,36 +412,120 @@ public:
 
     /**
      * Resize the vector without checking if the new size is valid or if the
-     * new size is greater than the current capacity. Initialize all new
+     * new size is greater than the current capacity. Copy initialize all new
      * elements to a given value.
      *
      * @param new_size The new size of the vector.
-     * @param value The value to initialize all new elements of the vector.
+     * @param value The value to copy initialize all new elements of the vector.
      */
     void resize_unsafe(size_type new_size, const T &value) {
         if (new_size > _size) {
-            construct_elements_range(_size, new_size, value);
+            copy_construct_elements(_data + _size, new_size - _size, value);
         }
         else if (new_size < _size) {
-            if constexpr (!avoid_init()) {
-                destroy_elements_range(new_size, _size);
-            }
+            destroy_elements(_data + new_size, _size - new_size);
         }
 
         _size = new_size;
     }
 
     /**
-     * Erases all elements from the container. After this call, size() returns zero.
-     * Does not affect the capacity of the vector.
+     * Add a value to the end of the vector. If the size is greater than the
+     * capacity and the vector has a realloc policy, the vector will be
+     * reallocated using the policy. Otherwise, a std::length_error will be
+     * thrown.
      *
+     * @param value The value to add (copy) to the end of the vector.
      */
-    void clear() {
-        if constexpr (!avoid_init()) {
-            destroy_elements_range(0, _size);
-        }
+    void push_back(const T &value) {
+        resize_prepare(_size + 1);
+        push_back_unsafe(value);
+    }
 
-        _size = 0;
+    /**
+     * Move a value to the end of the vector. If the size is greater than the
+     * capacity and the vector has a realloc policy, the vector will be
+     * reallocated using the policy. Otherwise, a std::length_error will be
+     * thrown.
+     *
+     * @param value The value to move to the end of the vector.
+     */
+    void push_back(T &&value) {
+        resize_prepare(_size + 1);
+        push_back_unsafe(std::move(value));
+    }
+
+    /**
+     * Add a value to the end of the vector without boundary checking.
+     *
+     * @param value The value to add to the end of the vector.
+     */
+    void push_back_unsafe(const T &value) {
+        emplace_back_unsafe(value);
+    }
+
+    /**
+     * Move a value to the end of the vector without boundary checking.
+     *
+     * @param value The value to move to the end of the vector.
+     */
+    void push_back_unsafe(T &&value) {
+        emplace_back_unsafe(std::move(value));
+    }
+
+    /**
+     * Construct an element at the end of the vector using the given arguments.
+     *
+     * @tparam Args The types of the arguments to construct the element.
+     * @param args The arguments to construct the element.
+     */
+    template<class... Args>
+    void emplace_back(Args &&... args) {
+        resize_prepare(_size + 1);
+        emplace_back_unsafe(std::forward<Args>(args)...);
+    }
+
+    /**
+     * Construct an element at the end of the vector using the given arguments
+     * without boundary checking.
+     *
+     * @tparam Args The types of the arguments to construct the element.
+     * @param args The arguments to construct the element.
+     */
+    template<class... Args>
+    void emplace_back_unsafe(Args&&... args) {
+        args_construct_element(_data + _size, std::forward<Args>(args)...);
+        ++_size;
+    }
+
+    /**
+     * Set the reallocation policy. The policy must be a callable object that
+     * takes the current capacity (size_type) and the required size
+     * (size_type) as arguments and returns the new capacity
+     * (size_type). It is assumed that the new capacity provided by the
+     * policy is greater or equal to the required size.
+     *
+     * A nullptr policy means that the vector will not be reallocated when the
+     * required size is greater than the current capacity.
+     *
+     * @param policy The reallocation policy to set.
+     */
+    void set_realloc_policy(realloc_policy policy) { _realloc_policy = policy; }
+
+    /**
+     * Get the reallocation policy.
+     *
+     * @return The reallocation policy.
+     */
+    realloc_policy get_realloc_policy() const { return _realloc_policy; }
+
+    /**
+     * Get the allocator used by the vector.
+     *
+     * @return The allocator used by the vector.
+     */
+    allocator_type get_allocator() const {
+        return _alloc;
     }
 
     /**
@@ -447,85 +550,12 @@ public:
     bool empty() const { return _size == 0; }
 
     /**
-     * Get a pointer to the raw data of the vector.
-     *
-     * @return A pointer to the raw data of the vector.
-     */
-    T *data() { return _data; }
-
-    /**
      * Access operator.
      *
      * @return A reference to the element at the given index.
      */
     T &operator[](size_type idx) { return _data[idx]; }
-
-    /**
-     * Access operator.
-     *
-     * @return A const reference to the element at the given index.
-     */
     const T &operator[](size_type idx) const { return _data[idx]; }
-
-    /**
-     * Add a value to the end of the vector. If the size is greater than the
-     * capacity and the vector has a ReallocPolicy, the vector will be
-     * reallocated using the policy. Otherwise, a std::length_error will be
-     * thrown.
-     *
-     * @param value The value to add to the end of the vector.
-     */
-    void push_back(const T &value) {
-        resize_prepare(_size + 1);
-        push_back_unsafe(value);
-    }
-
-    /**
-     * Move a value to the end of the vector. If the size is greater than the
-     * capacity and the vector has a ReallocPolicy, the vector will be
-     * reallocated using the policy. Otherwise, a std::length_error will be
-     * thrown.
-     *
-     * @param value The value to move to the end of the vector.
-     */
-    void push_back(T &&value) {
-        resize_prepare(_size + 1);
-        push_back_unsafe(std::move(value));
-    }
-
-    /**
-     * Add a value to the end of the vector without boundary checking.
-     *
-     * @param value The value to add to the end of the vector.
-     */
-    void push_back_unsafe(const T &value) {
-        construct_element(_data + _size, value);
-        ++_size;
-    }
-
-    /**
-     * Move a value to the end of the vector without boundary checking.
-     *
-     * @param value The value to move to the end of the vector.
-     */
-    void push_back_unsafe(T &&value) {
-        construct_element(_data + _size, std::move(value));
-        ++_size;
-    }
-
-    /**
-     * Reference to the last element of the vector.
-     *
-     * @return Reference to the last element of the vector.
-     */
-    T &back() { return _data[_size - 1]; }
-
-    /**
-     * Const reference to the last element of the vector.
-     *
-     * @return const T& Const reference to the last element of the vector.
-     */
-    const T &back() const { return _data[_size - 1]; }
 
     /**
      * Reference to the first element of the vector.
@@ -533,26 +563,23 @@ public:
      * @return Reference to the first element of the vector.
      */
     T &front() { return _data[0]; }
-
-    /**
-     * Const reference to the first element of the vector.
-     *
-     * @return const T& Const reference to the first element of the vector.
-     */
     const T &front() const { return _data[0]; }
 
     /**
-     * Swap the contents of the vector with another vector.
+     * Reference to the last element of the vector.
+     *
+     * @return Reference to the last element of the vector.
      */
-    void swap(Vector<T> &other) {
-        std::swap(_size, other._size);
-        std::swap(_capacity, other._capacity);
-        std::swap(_data, other._data);
+    T &back() { return _data[_size - 1]; }
+    const T &back() const { return _data[_size - 1]; }
 
-        if constexpr (alloc_traits::propagate_on_container_swap::value) {
-            std::swap(_alloc, other._alloc);
-        }
-    }
+    /**
+     * Get a pointer to the raw data of the vector.
+     *
+     * @return A pointer to the raw data of the vector.
+     */
+    T* data() { return _data; }
+    const T* data() const { return _data; }
 
     /**
      * Iterator to the beginning of the vector.
@@ -560,13 +587,8 @@ public:
      * @return Iterator to the beginning of the vector.
      */
     Iterator begin() { return Iterator(_data); }
-
-    /**
-     * Constant Iterator to the beginning of the vector.
-     *
-     * @return Constant Iterator to the beginning of the vector.
-     */
     const Iterator begin() const { return Iterator(_data); }
+    const Iterator cbegin() const noexcept { return Iterator(_data); }
 
     /**
      * Iterator to the end of the vector.
@@ -574,52 +596,81 @@ public:
      * @return Iterator to the end of the vector.
      */
     Iterator end() { return Iterator(_data + _size); }
-
-    /**
-     * Constant Iterator to the end of the vector.
-     *
-     * @return Constant Iterator to the end of the vector.
-     */
     const Iterator end() const { return Iterator(_data + _size); }
+    const Iterator cend() const noexcept { return Iterator(_data + _size); }
 
     /**
-     * Get the allocator used by the vector.
+     * Reverse iterator to the beginning of the vector.
      *
-     * @return The allocator used by the vector.
+     * @return Reverse iterator to the beginning of the vector.
      */
-    allocator_type get_allocator() const {
-        return _alloc;
+    reverse_iterator rbegin() { return reverse_iterator(end()); }
+    const reverse_iterator rbegin() const { return reverse_iterator(end()); }
+    const reverse_iterator crbegin() const noexcept { return reverse_iterator(end()); }
+
+    /**
+     * Reverse iterator to the end of the vector.
+     *
+     * @return Reverse iterator to the end of the vector.
+     */
+    reverse_iterator rend() { return reverse_iterator(begin()); }
+    const reverse_iterator rend() const { return reverse_iterator(begin()); }
+    const reverse_iterator crend() const noexcept { return reverse_iterator(begin()); }
+
+    /**
+     * Swap the contents of the vector with another vector.
+     */
+    void swap(Vector &other) {
+        std::swap(_realloc_policy, other._realloc_policy);
+
+        if constexpr (alloc_traits::propagate_on_container_swap::value) {
+            std::swap(_alloc, other._alloc);
+        }
+
+        std::swap(_size, other._size);
+        std::swap(_capacity, other._capacity);
+        std::swap(_data, other._data);
     }
 private:
     /**
      * Check if the vector should avoid calling the default constructor and
      * destructor when resizing the vector. I.e., check if the elements stored
      * in the vector are both standard layout and trivial.
-     * 
-     * @return True if the vector should avoid calling the default constructor
-     * and destructor, false otherwise.
      */
-    static constexpr bool avoid_init() {
-        return std::is_standard_layout_v<T> && std::is_trivial_v<T>;
-    }
+    static constexpr bool avoid_init = avoid_init_if_possible &&
+                                       std::is_standard_layout_v<T> &&
+                                       std::is_trivial_v<T>;
 
     /**
-     * Allocate memory into ptr.
+     * Check if the allocator defines the boolean
+     * allocator_implements_reallocate. If the allocator defines it and it is
+     * true, it is possible to call the reallocate function of the allocator. If
+     * allocator_implements_reallocate is not defined or it is false, the
+     * allocator does not implement the reallocate function.
      *
-     * @param capacity The size of the allocation in elements.
-     * @param ptr Pointer to the allocated memory.
      */
-    void allocate_ptr(size_type size, T **ptr) {
-        if (size == 0) {
-            *ptr = nullptr;
-        }
-        else {
-            *ptr = _alloc.allocate(size);
-        }
+    // static constexpr bool allocator_implements_reallocate = [] {
+    //     if constexpr (requires {
+    //                       typename allocator_type::implements_reallocate::value_type;
+    //                   }) {
+    //         return allocator_type::implements_reallocate::value;
+    //     }
+    //     else {
+    //         return false;
+    //     }
+    // }();
+
+    /**
+     * Return a pointer to a newly allocated memory of size @p size.
+     *
+     * @param size The number of elements to allocate.
+     */
+    T *allocate_ptr(size_type size) {
+        return (size <= 0) ? nullptr : _alloc.allocate(size);
     }
 
     /**
-     * Deallocate memory from ptr.
+     * Deallocate memory from @p ptr.
      *
      * @param ptr Pointer to the memory to deallocate.
      */
@@ -629,133 +680,90 @@ private:
     }
 
     /**
-     * Allocate _capacity memory for the vector.
-     *
-     */
-    void allocate() {
-        allocate_ptr(_capacity, &_data);
-    }
-
-    /**
-     * Deallocate memory for the vector.
-     *
-     */
-    void deallocate() {
-        deallocate_ptr(&_data);
-    }
-
-    /**
-     * Construct an element in the given pointer.
+     * Construct an element at @p pdst using the given arguments @p args.
      *
      * @tparam Args The types of the arguments to construct the element.
-     * @param p The pointer to the element.
+     * @param pdst The pointer to the element.
      * @param args The arguments to construct the element.
      */
-    template<typename... Args>
-    void construct_element(T* p, Args&&... args) {
-        alloc_traits::construct(_alloc, std::to_address(p), std::forward<Args>(args)...);
+    template<class... Args>
+    void args_construct_element(T* pdst, Args&&... args) {
+        alloc_traits::construct(_alloc, std::to_address(pdst), std::forward<Args>(args)...);
     }
 
     /**
-     * Destroy an element in the given pointer.
+     * Default construct @p n elements starting at pointer @p pdst.
      *
-     * @param p The pointer to the element.
+     * @param pdst The pointer to the first element to initialize.
+     * @param n The number of elements to initialize.
      */
-    void destroy_element(T* p) {
-        alloc_traits::destroy(_alloc, std::to_address(p));
-    }
+    void default_construct_elements(T* pdst, size_type n) {
+        if constexpr (avoid_init) {
+            return;
+        }
 
-    /**
-     * Initialize elements in the range [first, limit) with a given value.
-     *
-     * @param first The first element to initialize.
-     * @param limit The limit of the range.
-     * @param value The value to initialize the elements.
-     */
-    void construct_elements_range(size_type first, size_type limit, const T &value) {
-        for (size_type i = first; i < limit; ++i) {
-            construct_element(_data + i, value);
+        for (T* p = pdst; p < pdst + n; ++p) {
+            alloc_traits::construct(_alloc, std::to_address(p));
         }
     }
 
     /**
-     * Destroy elements in the range [first, limit).
+     * Copy construct @p n elements starting at destination pointer @p pdst and
+     * source pointer @p psrc. If @p single_src is true, then there is a single
+     * value to copy @p n times, i.e., @p psrc is not incremented after each
+     * copy. Otherwise, @p psrc is incremented after each copy.
      *
-     * @param first The first element to destroy.
-     * @param limit The limit of the range.
+     * @tparam single_src True if there is a single value to copy @p n times,
+     * false if @p psrc is incremented after each copy.
+     * @param pdst The pointer to the first element to initialize.
+     * @param psrc The pointer to the first element to copy from.
+     * @param n The number of elements to initialize.
      */
-    void destroy_elements_range(size_type first, size_type limit) {
-        for (size_type i = first; i < limit; ++i) {
-            destroy_element(_data + i);
+    template<bool single_src>
+    void copy_construct_elements(T* pdst, const T* psrc, size_type n) {
+        for (T* p = pdst; p < pdst + n; ++p) {
+            alloc_traits::construct(_alloc, std::to_address(pdst), *psrc);
+
+            if constexpr (!single_src) {
+                ++psrc;
+            }
         }
     }
 
     /**
-     * Copy elements from src to _data in the range [first, limit).
+     * Move construct @p n elements starting at destination pointer @p pdst and
+     * source pointer @p psrc.
      *
-     * @param first The first element to copy.
-     * @param limit The limit of the range.
-     * @param src Pointer to the source vector.
+     * @param pdst The pointer to the first element to initialize.
+     * @param psrc The pointer to the first element to move from.
+     * @param n The number of elements to initialize.
      */
-    void copy_elements_range(size_type first, size_type limit, const T *src) {
-        for (size_type i = first; i < limit; ++i) {
-            construct_element(_data + i, src[i]);
+    void move_construct_elements(T* pdst, T* psrc, size_type n) {
+        for (T* p = pdst; p < pdst + n; ++p, ++psrc) {
+            alloc_traits::construct(_alloc, std::to_address(p), std::move(*psrc));
         }
     }
 
     /**
-     * Move elements from src to _data in the range [first, limit).
+     * Destroy @p n elements starting at pointer @p pdst.
      *
-     * @param first The first element to move.
-     * @param limit The limit of the range.
-     * @param src Pointer to the source vector.
-     * @param dst Pointer to the destination vector.
+     * @param pdst The pointer to the first element to destroy.
+     * @param n The number of elements to destroy.
      */
-    void move_elements_range(size_type first, size_type limit, T *src) {
-        for (size_type i = first; i < limit; ++i) {
-            construct_element(_data + i, std::move(src[i]));
+    void destroy_elements(T* pdst, size_type n) {
+        if constexpr (avoid_init) {
+            return;
         }
-    }
 
-    /**
-     * Initialize _size elements of the vector with a given value.
-     *
-     * @param value The value to initialize all elements of the vector.
-     */
-    void construct_elements(const T &value) {
-        construct_elements_range(0, _size, value);
-    }
-
-    /**
-     * Destroy _size elements of the vector.
-     *
-     */
-    void destroy_elements() { destroy_elements_range(0, _size); }
-
-    /**
-     * Copy _size elements from src to dst.
-     *
-     * @param src Pointer to the source raw vector.
-     * @param dst Pointer to the destination raw vector.
-     */
-    void copy_elements(const T *src) {
-        copy_elements_range(0, _size, src);
-    }
-
-    /**
-     * Move _size elements from src to dst.
-     *
-     * @param src Pointer to the source raw vector.
-     * @param dst Pointer to the destination raw vector.
-     */
-    void move_elements(T *src) {
-        move_elements_range(0, _size, src);
+        for (T* p = pdst; p < pdst + n; ++p) {
+            alloc_traits::destroy(_alloc, std::to_address(p));
+        }
     }
 
     /**
      * Check if the new size is valid. If the new size is less than 0, a
      * std::length_error is thrown. If the new size is greater than the
-     * current capacity and the vector has a ReallocPolicy, the vector is
+     * current capacity and the vector has a realloc_policy, the vector is
      * reallocated using the policy. Otherwise, a std::length_error is
      * thrown.
      *
@@ -767,20 +775,21 @@ private:
         }
 
         if (new_size > _capacity) {
-            if constexpr (ReallocPolicy != nullptr) {
-                realloc(ReallocPolicy(_capacity, new_size));
+            if (_realloc_policy) {
+                realloc(_realloc_policy(_capacity, new_size));
             }
             else {
                 throw std::length_error(
-                    "Vector: new_size > _capacity and no ReallocPolicy");
+                    "Vector: new_size > _capacity and no realloc policy set");
             }
         }
     }
 
+    realloc_policy _realloc_policy = nullptr;
     allocator_type _alloc;
-    size_type _size;
-    size_type _capacity;
-    T *_data;
+    size_type _size = 0;
+    size_type _capacity = 0;
+    T *_data = nullptr;
 };
 
 } // namespace theseus

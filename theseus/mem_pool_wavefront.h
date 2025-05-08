@@ -123,17 +123,10 @@ public:
     }
 
     /**
-     * Deallocate @p nbytes bytes of memory from @p ptr. In case @p is the last
-     * chunk, then reuse it. Otherwise, do nothing.
-     *
-     * @param ptr The pointer to the memory to deallocate.
-     * @param nbytes Unused. The number of bytes to deallocate.
+     * This memory pool does not deallocate memory.
      */
-    void deallocate(void *ptr, [[maybe_unused]] std::size_t nbytes) override {
-        // This is the last chunk allocated. It can be reused.
-        if (ptr == _curr_chunk->data) {
-            --_curr_chunk;
-        }
+    void deallocate([[maybe_unused]] void *ptr, [[maybe_unused]] std::size_t nbytes) override {
+        // Do nothing.
     }
 private:
     static constexpr int max_too_big_count = 10;

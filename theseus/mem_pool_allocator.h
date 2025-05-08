@@ -13,33 +13,33 @@
 namespace theseus {
 
 template <class T>
-class GrowingAllocator {
+class MemPoolAllocator {
 public:
     using value_type = T;
     using propagate_on_container_move_assignment =
           MemPool::propagate_on_container_move_assignment;
-    using realloc_possible = std::true_type;
+    // using implements_reallocate = std::true_type;
 
     /**
      * Construct an allocator that uses the given memory pool.
      *
      * @param mem_pool A MemPool.
      */
-    GrowingAllocator(MemPool *mem_pool) noexcept : _mem_pool(mem_pool){};
+    MemPoolAllocator(MemPool *mem_pool) noexcept : _mem_pool(mem_pool){};
 
     /**
      * Copy constructor.
      *
      * @param other Other allocator.
      */
-    GrowingAllocator(const GrowingAllocator &other) noexcept = default;
+    MemPoolAllocator(const MemPoolAllocator &other) noexcept = default;
 
     /**
      * Copy operator.
      *
      * @param other The other allocator.
      */
-    GrowingAllocator &operator=(const GrowingAllocator &other) noexcept {
+    MemPoolAllocator &operator=(const MemPoolAllocator &other) noexcept {
         if (this == &other) {
             return *this;
         }
@@ -54,7 +54,7 @@ public:
      * @param other The other allocator.
      */
     template <class U>
-    GrowingAllocator(const GrowingAllocator<U> &other) noexcept
+    MemPoolAllocator(const MemPoolAllocator<U> &other) noexcept
         : _mem_pool(other._mem_pool){}
 
     /**
@@ -62,14 +62,14 @@ public:
      *
      * @param other Other allocator.
      */
-    GrowingAllocator(GrowingAllocator &&other) noexcept = default;
+    MemPoolAllocator(MemPoolAllocator &&other) noexcept = default;
 
     /**
      * Move operator.
      *
      * @param other The other allocator.
      */
-    GrowingAllocator &operator=(GrowingAllocator &&other) noexcept = default;
+    MemPoolAllocator &operator=(MemPoolAllocator &&other) noexcept = default;
 
     /**
      * Move operator from an allocator of type U.
@@ -77,7 +77,7 @@ public:
      * @param other The other allocator.
      */
     template <class U>
-    GrowingAllocator(GrowingAllocator<U> &&other) noexcept
+    MemPoolAllocator(MemPoolAllocator<U> &&other) noexcept
         : _mem_pool(std::move(other._mem_pool)) {
         other._mem_pool = nullptr;
     }
@@ -101,16 +101,8 @@ public:
         _mem_pool->deallocate(p, num * sizeof(value_type));
     }
 
-    /**
-     * Reallocate memory from @p p to hold at least @p num_elements of type
-     * value_type.
-     *
-     * @param p The pointer to the memory to reallocate.
-     * @param num The number of elements to reallocate.
-     * @return value_type* A pointer to the reallocated memory.
-     */
-    // value_type *reallocate(value_type* p, std::size_t num) {
-    //     return static_cast<value_type*>(_mem_pool->reallocate(p, num * sizeof(value_type)));
+    // value_type *reallocate(void *p, std::size_t old_bytes, std::size_t new_bytes) {
+    //     return _mem_pool->reallocate(p, old_bytes, new_bytes);
     // }
 
     /**
@@ -122,7 +114,7 @@ public:
      * allocator.
      */
     template <class U>
-    bool operator==(const GrowingAllocator<U> &other) const {
+    bool operator==(const MemPoolAllocator<U> &other) const {
         return (*_mem_pool) == other->mem_pool;
     }
 
@@ -134,7 +126,7 @@ public:
      * allocator.
      */
     template <class U>
-    bool operator!=(const GrowingAllocator<U> &other) const {
+    bool operator!=(const MemPoolAllocator<U> &other) const {
         return (*_mem_pool) != other->mem_pool;
     }
 
@@ -143,7 +135,7 @@ private:
 
     // Add a friend declaration for the rebind constructor
     template <class U>
-    friend class GrowingAllocator;
+    friend class MemPoolAllocator;
 };
 
 } // namespace theseus
