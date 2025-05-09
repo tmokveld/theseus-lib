@@ -132,7 +132,7 @@ private:
     static constexpr int max_too_big_count = 10;
     static constexpr double too_big_factor = 3.0;
 
-    static constexpr double size_factor = 1.5;   // Allocate 50% more.
+    static constexpr double size_factor = 1.0;
 
     // Reset _nclears every nclears_to_reset calls to clear().
     static constexpr std::ptrdiff_t nclears_to_reset = 1000;

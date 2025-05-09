@@ -133,10 +133,10 @@ private:
                   MemPoolWavefront *const m_jumps_mem_pool,
                   MemPoolWavefront *const i_jumps_mem_pool,
                   MemPoolWavefront *const i2_jumps_mem_pool) :
-            _m_wf(GrowingAllocator<Cell>{m_wf_mem_pool}),
-            _m_jumps(GrowingAllocator<Cell>{m_jumps_mem_pool}),
-            _i_jumps(GrowingAllocator<Cell>{i_jumps_mem_pool}),
-            _i2_jumps(GrowingAllocator<Cell>{i2_jumps_mem_pool}) {}
+            _m_wf(MemPoolAllocator<Cell>{m_wf_mem_pool}),
+            _m_jumps(MemPoolAllocator<Cell>{m_jumps_mem_pool}),
+            _i_jumps(MemPoolAllocator<Cell>{i_jumps_mem_pool}),
+            _i2_jumps(MemPoolAllocator<Cell>{i2_jumps_mem_pool}) {}
     };
 
     std::vector<ScoreData> _sdata;
