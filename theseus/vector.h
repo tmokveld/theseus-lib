@@ -204,7 +204,7 @@ public:
         }
 
         _data = allocate_ptr(_capacity);
-        copy_construct_elements<true>(_data, _size, &value);
+        copy_construct_elements<true>(_data, &value, _size);
     }
 
     /**
@@ -420,13 +420,23 @@ public:
      */
     void resize_unsafe(size_type new_size, const T &value) {
         if (new_size > _size) {
-            copy_construct_elements(_data + _size, new_size - _size, value);
+            copy_construct_elements<true>(_data + _size, &value, new_size - _size);
         }
         else if (new_size < _size) {
             destroy_elements(_data + new_size, _size - new_size);
         }
 
         _size = new_size;
+    }
+
+    /**
+     * Erases all elements from the container. After this call, size() returns
+     * zero. The capacity of the vector is not changed.
+     *
+     */
+    void clear() {
+        destroy_elements(_data, _size);
+        _size = 0;
     }
 
     /**
@@ -722,7 +732,7 @@ private:
     template<bool single_src>
     void copy_construct_elements(T* pdst, const T* psrc, size_type n) {
         for (T* p = pdst; p < pdst + n; ++p) {
-            alloc_traits::construct(_alloc, std::to_address(pdst), *psrc);
+            alloc_traits::construct(_alloc, std::to_address(p), *psrc);
 
             if constexpr (!single_src) {
                 ++psrc;
