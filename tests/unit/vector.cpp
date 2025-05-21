@@ -365,7 +365,7 @@ TEST_CASE("Test vector emplace_back") {
     CHECK(non_pod_destructor_calls == size);
 }
 
-TEST_CASE("Test vector push_back") {
+TEST_CASE("Test vector push_back and pop_back") {
     constexpr int size = 500;
 
     theseus::Vector<NonPOD> v;
@@ -381,11 +381,16 @@ TEST_CASE("Test vector push_back") {
         v.push_back(std::move(NonPOD{i}));
     }
 
+    v.pop_back();
+    v.pop_back_unsafe();
+    v.push_back_unsafe(std::move(NonPOD{size - 2}));
+    v.push_back_unsafe(std::move(NonPOD{size - 1}));
+
     CHECK(non_pod_default_constructor_calls == 0);
-    CHECK(non_pod_constructor_calls == size);
+    CHECK(non_pod_constructor_calls == size + 2);
     CHECK(non_pod_copy_constructor_calls == 0);
-    CHECK(non_pod_move_constructor_calls == size);
-    CHECK(non_pod_destructor_calls == size);
+    CHECK(non_pod_move_constructor_calls == size + 2);
+    CHECK(non_pod_destructor_calls == size + 4);
 
     for (int i = 0; i < size; ++i) {
         CHECK(v[i]._a == i);
@@ -395,10 +400,10 @@ TEST_CASE("Test vector push_back") {
     CHECK(v.empty() == true);
 
     CHECK(non_pod_default_constructor_calls == 0);
-    CHECK(non_pod_constructor_calls == size);
+    CHECK(non_pod_constructor_calls == size + 2);
     CHECK(non_pod_copy_constructor_calls == 0);
-    CHECK(non_pod_move_constructor_calls == size);
-    CHECK(non_pod_destructor_calls == size * 2);
+    CHECK(non_pod_move_constructor_calls == size + 2);
+    CHECK(non_pod_destructor_calls == size * 2 + 4);
 }
 
 TEST_CASE("Test vector element access") {
@@ -433,7 +438,7 @@ TEST_CASE("Test vector element access") {
     CHECK(v[size - 1] == -2);
 
     try {
-        v.at(size * 2);
+        v.at(size * 2) = 1;
         CHECK(false);
     } catch (const std::out_of_range &e) {
         CHECK(true);
@@ -450,6 +455,14 @@ TEST_CASE("Test vector iterator") {
         for (auto it = v.begin(); it != v.end(); ++it) {
             CHECK(*it == 200);
             *it = i;
+            ++i;
+        }
+
+        i = 0;
+        for (auto it = v.cbegin(); it != v.cend(); ++it) {
+            static_assert(std::is_const<std::remove_reference_t<decltype(*it)>>::value,
+                          "*it is not const!");
+            CHECK(*it == i);
             ++i;
         }
 

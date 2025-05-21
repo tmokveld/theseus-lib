@@ -3,6 +3,7 @@
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <assert.h>
 
 /**
  * Dynamic-resizable vector with contiguous dynamic-allocated storage.
@@ -20,13 +21,13 @@
  * new capacity provided by the policy is greater or equal to the required size.
  *
  * In case the elements stored in the vector are both standard layout and
- * trivial, the template parameter avoid_init_if_possible can be set to true to
+ * trivial, the template parameter AvoidInitIfPossible can be set to true to
  * avoid calling the default constructor and destructor when resizing the
  * vector. This improves the performance of the vector but the value of the
  * elements is not guaranteed to be the same as the default value of the type.
  *
  * @tparam T The type of the elements stored in the vector.
- * @tparam avoid_init_if_possible If true, the default constructor and
+ * @tparam AvoidInitIfPossible If true, the default constructor and
  * destructor are avoided when T is standard layout and trivial. This improves
  * the performance of the vector but the value of the elements is not guaranteed
  * to be the same as the default value of the type. If false, the default
@@ -36,13 +37,14 @@
 
 namespace theseus {
 
-template <typename T, bool avoid_init_if_possible = false, typename Allocator = std::allocator<T>>
+template <typename T, bool AvoidInitIfPossible = false, typename Allocator = std::allocator<T>>
 class Vector {
 public:
     /**
      * Iterator for the Vector.
      *
      */
+    template <bool IsConst>
     class Iterator {
     public:
         using iterator_category = std::random_access_iterator_tag;
@@ -50,28 +52,28 @@ public:
         using value_type = T;
         using size_type = std::ptrdiff_t;
         using difference_type = std::ptrdiff_t;
-        using pointer = T*;
-        using reference = T&;
+        using pointer = std::conditional_t<IsConst, const T*, T*>;
+        using reference = std::conditional_t<IsConst, const T&, T&>;
 
         /**
          * Default constructor.
          *
          */
-        Iterator() = default;
+        Iterator() noexcept = default;
 
         /**
          * Construct an iterator with a given pointer.
          *
          * @param ptr The pointer to the element.
          */
-        Iterator(T *ptr) : _ptr(ptr) {}
+        Iterator(T *ptr) noexcept : _ptr(ptr) {}
 
         /**
          * Pre-increment operator.
          *
          * @return Reference to the current iterator.
          */
-        Iterator &operator++() {
+        Iterator &operator++() noexcept {
             _ptr++;
             return *this;
         }
@@ -81,7 +83,7 @@ public:
          *
          * @return Copy of the iterator before incrementing.
          */
-        Iterator operator++(int) {
+        Iterator operator++(int) noexcept {
             Iterator temp = *this;
             ++(*this);
             return temp;
@@ -92,7 +94,7 @@ public:
          *
          * @return Reference to the current iterator.
          */
-        Iterator &operator--() {
+        Iterator &operator--() noexcept {
             _ptr--;
             return *this;
         }
@@ -102,7 +104,7 @@ public:
          *
          * @return Copy of the iterator before decrementing.
          */
-        Iterator operator--(int) {
+        Iterator operator--(int) noexcept {
             Iterator tmp = *this;
             --_ptr;
             return tmp;
@@ -114,7 +116,7 @@ public:
          * @param n The number of elements to add.
          * @return A new iterator with the added value.
          */
-        Iterator &operator+=(difference_type n) {
+        Iterator &operator+=(difference_type n) noexcept {
             _ptr += n;
             return *this;
         }
@@ -125,7 +127,7 @@ public:
          * @param n The number of elements to subtract.
          * @return A new iterator with the subtracted value.
          */
-        Iterator &operator-=(difference_type n) {
+        Iterator &operator-=(difference_type n) noexcept {
             _ptr -= n;
             return *this;
         }
@@ -136,7 +138,7 @@ public:
          * @param n The number of elements to add.
          * @return A new iterator with the added value.
          */
-        Iterator operator+(difference_type n) const {
+        [[nodiscard]] Iterator operator+(difference_type n) const noexcept {
             return Iterator(_ptr + n);
         }
 
@@ -146,7 +148,7 @@ public:
          * @param n The number of elements to subtract.
          * @return A new iterator with the subtracted value.
          */
-        Iterator operator-(difference_type n) const {
+        [[nodiscard]] Iterator operator-(difference_type n) const noexcept {
             return Iterator(_ptr - n);
         }
 
@@ -157,7 +159,8 @@ public:
          * @param it The iterator to add to.
          * @return A new iterator with the added value.
          */
-        friend Iterator operator+(difference_type n, const Iterator& it) {
+        [[nodiscard]]
+        friend Iterator operator+(difference_type n, const Iterator& it) noexcept {
             return Iterator(it._ptr + n);
         }
 
@@ -168,7 +171,8 @@ public:
          * @param y The second iterator.
          * @return The difference between the two iterators.
          */
-        friend difference_type operator-(const Iterator &x, const Iterator &y) {
+        [[nodiscard]] friend
+        difference_type operator-(const Iterator &x, const Iterator &y) noexcept {
             return x._ptr - y._ptr;
         }
 
@@ -177,14 +181,14 @@ public:
          *
          * @return Reference to the element pointed by the iterator.
          */
-        T &operator*() const { return *_ptr; }
+        [[nodiscard]] reference operator*() const noexcept { return *_ptr; }
 
         /**
          * Member access operator.
          *
          * @return Pointer to the element pointed by the iterator.
          */
-        T *operator->() const { return _ptr; }
+        [[nodiscard]] pointer operator->() const noexcept { return _ptr; }
 
         /**
          * Subscript operator.
@@ -193,7 +197,8 @@ public:
          * iterator.
          * @return Reference to the element at the given index.
          */
-        T &operator[] (difference_type idx) const { return _ptr[idx]; }
+        [[nodiscard]]
+        reference operator[] (difference_type idx) const noexcept { return _ptr[idx]; }
 
         /**
          * Equality operator.
@@ -202,6 +207,7 @@ public:
          * @param y The second iterator.
          * @return True if the two iterators are equal, false otherwise.
          */
+        [[nodiscard]]
         friend bool operator==(const Iterator &x, const Iterator &y) noexcept {
             return x._ptr == y._ptr;
         }
@@ -213,6 +219,7 @@ public:
          * @param y The second iterator.
          * @return True if the two iterators are not equal, false otherwise.
          */
+        [[nodiscard]]
         friend bool operator!=(const Iterator &x, const Iterator &y) noexcept {
             return !(x == y);
         }
@@ -225,6 +232,7 @@ public:
          * @return True if the first iterator is less than the second, false
          * otherwise.
          */
+        [[nodiscard]]
         friend bool operator<(const Iterator &x, const Iterator &y) noexcept {
             return x._ptr < y._ptr;
         }
@@ -237,6 +245,7 @@ public:
          * @return True if the first iterator is greater than the second, false
          * otherwise.
          */
+        [[nodiscard]]
         friend bool operator>(const Iterator &x, const Iterator &y) noexcept {
             return y < x;
         }
@@ -249,6 +258,7 @@ public:
          * @return True if the first iterator is less than or equal to the
          * second, false otherwise.
          */
+        [[nodiscard]]
         friend bool operator<=(const Iterator &x, const Iterator &y) noexcept {
             return !(y < x);
         }
@@ -261,13 +271,14 @@ public:
          * @return True if the first iterator is greater than or equal to the
          * second, false otherwise.
          */
+        [[nodiscard]]
         friend bool operator>=(const Iterator &x, const Iterator &y) noexcept {
             return !(x < y);
         }
     private:
         T *_ptr = nullptr;
     };
-    static_assert(std::contiguous_iterator<Iterator>);
+    static_assert(std::contiguous_iterator<Iterator<false>>);
 
     using value_type = T;
     using allocator_type = Allocator;
@@ -278,16 +289,16 @@ public:
     using alloc_traits = std::allocator_traits<allocator_type>;
     using pointer = typename alloc_traits::pointer;
     using const_pointer = typename alloc_traits::const_pointer;
-    using iterator = Iterator;
-    using const_iterator = const Iterator;
-    using reverse_iterator = std::reverse_iterator<Iterator>;
-    using const_reverse_iterator = std::reverse_iterator<const Iterator>;
+    using iterator = Iterator<false>;
+    using const_iterator = Iterator<true>;
+    using reverse_iterator = std::reverse_iterator<Iterator<false>>;
+    using const_reverse_iterator = std::reverse_iterator<Iterator<true>>;
 
     using realloc_policy = std::function<size_type(size_type, size_type)>;
 
     /**
      * Create an empty vector. Both the size and capacity are 0 and there is no
-     * reallocation policy.
+     * reallocation policy. The default allocator is used.
      *
      */
     Vector() noexcept(noexcept(Allocator())) : Vector(Allocator()) {}
@@ -298,7 +309,7 @@ public:
      *
      * @param alloc The allocator to use.
      */
-    explicit Vector(const Allocator &alloc) : _alloc(alloc) {}
+    explicit Vector(const Allocator &alloc) noexcept : _alloc(alloc) {}
 
     /**
      * Create an vector with a given size @p size and optional allocator @p
@@ -342,7 +353,9 @@ public:
     }
 
     /**
-     * Copy constructor.
+     * Copy constructor. The reallocation policy is also copied, while the
+     * behavior of the allocator is determined by the
+     * propagate_on_container_copy_construction property of the allocator.
      *
      * @param other Source vector to copy.
      */
@@ -361,7 +374,7 @@ public:
      * @param other Source vector to move.
      */
     Vector(Vector &&other) noexcept
-        : _realloc_policy(other._realloc_policy),
+        : _realloc_policy(std::move(other._realloc_policy)),
           _alloc(std::move(other._alloc)),
           _size(other._size), _capacity(other._capacity), _data(other._data) {
 
@@ -371,7 +384,9 @@ public:
     }
 
     /**
-     * Copy assignment operator.
+     * Copy assignment operator. The reallocation policy is also copied, while
+     * the behavior of the allocator is determined by the
+     * propagate_on_container_copy_assignment property of the allocator.
      *
      * @param other Source vector to copy.
      * @return Reference to the current vector.
@@ -391,7 +406,7 @@ public:
             deallocate_ptr(&_data);
         }
 
-        if (propagate_alloc) {
+        if constexpr (propagate_alloc) {
             _alloc = other._alloc;
         }
 
@@ -409,22 +424,23 @@ public:
     }
 
     /**
-     * Move assignment operator.
+     * Move assignment operator. The reallocation policy is also moved while the
+     * behavior of the allocator is determined by the
+     * propagate_on_container_move_assignment property of the allocator.
      *
      * @param other Source vector to move.
      * @return Reference to the current vector.
      */
-    Vector &operator=(Vector &&other) noexcept {
+    Vector &operator=(Vector &&other) noexcept(noexcept_move_assign) {
+
         if (this == &other) {
             return *this;
         }
 
         destroy_elements(_data, _size);
 
-        // We can safely move the data.
-        if (alloc_traits::propagate_on_container_move_assignment::value ||
-            _alloc == other._alloc) {
-
+        // Move the data from other to this.
+        auto move_from_other = [&]() {
             deallocate_ptr(&_data);
 
             _realloc_policy = std::move(other._realloc_policy);
@@ -436,20 +452,31 @@ public:
             other._size = 0;
             other._capacity = 0;
             other._data = nullptr;
+        };
+
+        if constexpr (noexcept_move_assign) {
+            // We can safely move the data.
+            move_from_other();
         }
-        // We need to copy the elements using the current allocator.
         else {
-            _realloc_policy = other._realloc_policy;
-
-            if (_capacity < other._capacity) {
-                deallocate_ptr(&_data);
-
-                _capacity = other._capacity;
-                _data = allocate_ptr(_capacity);
+            if (_alloc == other._alloc) {
+                // We can safely move the data.
+                move_from_other();
             }
+            else {
+                // We need to copy the elements using the current allocator.
+                _realloc_policy = other._realloc_policy;
 
-            _size = other._size;
-            move_construct_elements(_data, other._data, _size);
+                if (_capacity != other._capacity) {
+                    deallocate_ptr(&_data);
+
+                    _capacity = other._capacity;
+                    _data = allocate_ptr(_capacity);
+                }
+
+                _size = other._size;
+                move_construct_elements(_data, other._data, _size);
+            }
         }
 
         return *this;
@@ -468,6 +495,9 @@ public:
      * Reallocate the vector to a new capacity. The new capacity must be greater
      * than or equal to the current size of the vector and greater than or equal
      * to 0.
+     *
+     * If new_capacity != _capacity, then all iterators and references to the
+     * elements are invalidated.
      *
      * @param new_capacity The new capacity of the vector.
      */
@@ -505,6 +535,9 @@ public:
      * than the current capacity, the vector will be reallocated using the
      * policy. Otherwise, a std::length_error will be thrown.
      *
+     * If the capacity of the vector changes, then all iterators and references
+     * to the elements are invalidated.
+     *
      * @param new_size The new size of the vector.
      */
     void resize(size_type new_size) {
@@ -519,6 +552,9 @@ public:
      * capacity, the vector will be reallocated using the policy. Otherwise, a
      * std::length_error will be thrown.
      *
+     * If the capacity of the vector changes, then all iterators and references
+     * to the elements are invalidated.
+     *
      * @param new_size The new size of the vector.
      * @param value The value to copy initialize all new elements of the vector.
      */
@@ -529,11 +565,12 @@ public:
 
     /**
      * Resize the vector without checking if the new size is valid or if the
-     * new size is greater than the current capacity.
+     * new size is greater than the current capacity. This only works if the
+     * capacity is greater than or equal to the new size.
      *
      * @param new_size The new size of the vector.
      */
-    void resize_unsafe(size_type new_size) {
+    void resize_unsafe(size_type new_size) noexcept(avoid_init) {
         if (new_size > _size) {
             default_construct_elements(_data + _size, new_size - _size);
         }
@@ -547,7 +584,8 @@ public:
     /**
      * Resize the vector without checking if the new size is valid or if the
      * new size is greater than the current capacity. Copy initialize all new
-     * elements to a given value.
+     * elements to a given value. This only works if the capacity is greater
+     * than or equal to the new size.
      *
      * @param new_size The new size of the vector.
      * @param value The value to copy initialize all new elements of the vector.
@@ -568,7 +606,7 @@ public:
      * zero. The capacity of the vector is not changed.
      *
      */
-    void clear() {
+    void clear() noexcept {
         destroy_elements(_data, _size);
         _size = 0;
     }
@@ -577,12 +615,13 @@ public:
      * Add a value to the end of the vector. If the size is greater than the
      * capacity and the vector has a realloc policy, the vector will be
      * reallocated using the policy. Otherwise, a std::length_error will be
-     * thrown.
+     * thrown. If the capacity of the vector changes, then all iterators and
+     * references to the elements are invalidated.
      *
      * @param value The value to add (copy) to the end of the vector.
      */
     void push_back(const T &value) {
-        resize_prepare(_size + 1);
+        add_back_prepare();
         push_back_unsafe(value);
     }
 
@@ -590,17 +629,19 @@ public:
      * Move a value to the end of the vector. If the size is greater than the
      * capacity and the vector has a realloc policy, the vector will be
      * reallocated using the policy. Otherwise, a std::length_error will be
-     * thrown.
+     * thrown. If the capacity of the vector changes, then all iterators and
+     * references to the elements are
      *
      * @param value The value to move to the end of the vector.
      */
     void push_back(T &&value) {
-        resize_prepare(_size + 1);
+        add_back_prepare();
         push_back_unsafe(std::move(value));
     }
 
     /**
-     * Add a value to the end of the vector without boundary checking.
+     * Add a value to the end of the vector without boundary checking. This only
+     * works if the capacity is greater than or equal to the new size.
      *
      * @param value The value to add to the end of the vector.
      */
@@ -609,29 +650,33 @@ public:
     }
 
     /**
-     * Move a value to the end of the vector without boundary checking.
+     * Move a value to the end of the vector without boundary checking. This only
+     * works if the capacity is greater than or equal to the new size.
      *
      * @param value The value to move to the end of the vector.
      */
-    void push_back_unsafe(T &&value) {
-        emplace_back_unsafe(std::move(value));
-    }
+    void push_back_unsafe(T &&value) { emplace_back_unsafe(std::move(value)); }
 
     /**
      * Construct an element at the end of the vector using the given arguments.
+     * If the size is greater than the capacity and the vector has a realloc
+     * policy, the vector will be reallocated using the policy. If the capacity
+     * of the vector changes, then all iterators and references to the elements
+     * are invalidated.
      *
      * @tparam Args The types of the arguments to construct the element.
      * @param args The arguments to construct the element.
      */
     template<class... Args>
     void emplace_back(Args &&... args) {
-        resize_prepare(_size + 1);
+        add_back_prepare();
         emplace_back_unsafe(std::forward<Args>(args)...);
     }
 
     /**
      * Construct an element at the end of the vector using the given arguments
-     * without boundary checking.
+     * without boundary checking. This only works if the capacity is greater
+     * than or equal to the new size.
      *
      * @tparam Args The types of the arguments to construct the element.
      * @param args The arguments to construct the element.
@@ -640,6 +685,28 @@ public:
     void emplace_back_unsafe(Args&&... args) {
         args_construct_element(_data + _size, std::forward<Args>(args)...);
         ++_size;
+    }
+
+    /**
+     * Remove the last element of the vector. If the vector is empty, a
+     * std::out_of_range exception is thrown.
+     *
+     */
+    void pop_back() {
+        if (_size == 0) {
+            throw std::out_of_range("Vector: pop_back on empty vector");
+        }
+        pop_back_unsafe();
+    }
+
+    /**
+     * Remove the last element of the vector without boundary checking. This
+     * only works if the vector is not empty.
+     *
+     */
+    void pop_back_unsafe() noexcept(avoid_init) {
+        --_size;
+        destroy_elements(_data + _size, 1);
     }
 
     /**
@@ -661,14 +728,16 @@ public:
      *
      * @return The reallocation policy.
      */
-    realloc_policy get_realloc_policy() const { return _realloc_policy; }
+    [[nodiscard]] realloc_policy get_realloc_policy() const noexcept {
+        return _realloc_policy;
+    }
 
     /**
      * Get the allocator used by the vector.
      *
      * @return The allocator used by the vector.
      */
-    allocator_type get_allocator() const {
+    [[nodiscard]] allocator_type get_allocator() const noexcept {
         return _alloc;
     }
 
@@ -677,111 +746,141 @@ public:
      *
      * @return The size of the vector.
      */
-    size_type size() const { return _size; }
+    [[nodiscard]] size_type size() const noexcept { return _size; }
 
     /**
      * Get the capacity of the vector.
      *
      * @return The capacity of the vector.
      */
-    size_type capacity() const { return _capacity; }
+    [[nodiscard]] size_type capacity() const noexcept { return _capacity; }
 
     /**
-     * Check if the vector is empty.
+     * Check if the vector is empty, i.e., size() == 0.
      *
      * @return True if the vector is empty, false otherwise.
      */
-    bool empty() const { return _size == 0; }
+    [[nodiscard]] bool empty() const noexcept { return _size == 0; }
 
     /**
      * Access operator.
      *
      * @return A reference to the element at the given index.
      */
-    T &operator[](size_type idx) { return _data[idx]; }
-    const T &operator[](size_type idx) const { return _data[idx]; }
+    [[nodiscard]] T &operator[](size_type idx) { return _data[idx]; }
+    [[nodiscard]] const T &operator[](size_type idx) const { return _data[idx]; }
 
     /**
      * Access operator with bounds checking.
      *
      * @return A reference to the element at the given index.
      */
-    T &at(size_type idx) {
+    [[nodiscard]] T &at(size_type idx) {
         if (idx >= _size) {
             throw std::out_of_range("Vector: index out of range");
         }
         return _data[idx];
     }
-    const T &at(size_type idx) const {
+    [[nodiscard]] const T &at(size_type idx) const {
         return const_cast<T &>(const_cast<const Vector *>(this)->at(idx));
     }
 
     /**
-     * Reference to the first element of the vector.
+     * Reference to the first element of the vector. If the empty() is true,
+     * the behavior is undefined.
      *
      * @return Reference to the first element of the vector.
      */
-    T &front() { return _data[0]; }
-    const T &front() const { return _data[0]; }
+    [[nodiscard]] T &front() { return _data[0]; }
+    [[nodiscard]] const T &front() const { return _data[0]; }
 
     /**
-     * Reference to the last element of the vector.
+     * Reference to the last element of the vector. If the empty() is true,
+     * the behavior is undefined.
      *
      * @return Reference to the last element of the vector.
      */
-    T &back() { return _data[_size - 1]; }
-    const T &back() const { return _data[_size - 1]; }
+    [[nodiscard]] T &back() { return _data[_size - 1]; }
+    [[nodiscard]] const T &back() const { return _data[_size - 1]; }
 
     /**
-     * Get a pointer to the raw data of the vector.
+     * Get a pointer to the raw data of the vector. If capacity() is 0, the
+     * pointer is nullptr.
      *
      * @return A pointer to the raw data of the vector.
      */
-    T* data() { return _data; }
-    const T* data() const { return _data; }
+    [[nodiscard]] T* data() noexcept { return _data; }
+    [[nodiscard]] const T* data() const noexcept { return _data; }
 
     /**
-     * Iterator to the beginning of the vector.
+     * Iterator to the beginning of the vector. If empty() is true, the
+     * iterator is equal to the end() iterator.
      *
      * @return Iterator to the beginning of the vector.
      */
-    Iterator begin() { return Iterator(_data); }
-    const Iterator begin() const { return Iterator(_data); }
-    const Iterator cbegin() const noexcept { return Iterator(_data); }
+    [[nodiscard]] iterator begin() noexcept { return iterator(_data); }
+    [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(_data); }
+    [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
 
     /**
-     * Iterator to the end of the vector.
+     * Iterator past the last element of the vector. If empty() is true, the
+     * iterator is equal to the begin() iterator.
      *
-     * @return Iterator to the end of the vector.
+     * @return Iterator past the last element of the vector.
      */
-    Iterator end() { return Iterator(_data + _size); }
-    const Iterator end() const { return Iterator(_data + _size); }
-    const Iterator cend() const noexcept { return Iterator(_data + _size); }
+    [[nodiscard]]
+    iterator end() noexcept { return iterator(_data + _size); }
+    [[nodiscard]]
+    const_iterator end() const noexcept { return const_iterator(_data + _size); }
+    [[nodiscard]]
+    const_iterator cend() const noexcept { return end(); }
 
     /**
-     * Reverse iterator to the beginning of the vector.
+     * Reverse iterator to the beginning of the vector. If empty() is true, the
+     * iterator is equal to the rend() iterator.
      *
      * @return Reverse iterator to the beginning of the vector.
      */
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    const reverse_iterator rbegin() const { return reverse_iterator(end()); }
-    const reverse_iterator crbegin() const noexcept { return reverse_iterator(end()); }
+    [[nodiscard]] reverse_iterator rbegin() noexcept {
+        return reverse_iterator(end());
+    }
+    [[nodiscard]] const_reverse_iterator rbegin() const noexcept {
+        return const_reverse_iterator(end());
+    }
+    [[nodiscard]] const_reverse_iterator crbegin() const noexcept {
+        return rbegin();
+    }
 
     /**
-     * Reverse iterator to the end of the vector.
+     * Reverse iterator before the first element of the vector. If empty() is
+     * true, the iterator is equal to the rbegin() iterator.
      *
-     * @return Reverse iterator to the end of the vector.
+     * @return Reverse iterator before the first element of the vector.
      */
-    reverse_iterator rend() { return reverse_iterator(begin()); }
-    const reverse_iterator rend() const { return reverse_iterator(begin()); }
-    const reverse_iterator crend() const noexcept { return reverse_iterator(begin()); }
+    [[nodiscard]] reverse_iterator rend() noexcept {
+        return reverse_iterator(begin());
+    }
+    [[nodiscard]] const_reverse_iterator rend() const noexcept {
+        return const_reverse_iterator(begin());
+    }
+    [[nodiscard]] const_reverse_iterator crend() const noexcept {
+        return rend();
+    }
 
     /**
-     * Swap the contents of the vector with another vector.
+     * Swap the contents of the vector with another vector. All iterators and
+     * references remain valid. The end() iterator is invalidated.
      *
      * @param other The vector to swap with.
      */
-    void swap(Vector &other) {
+    void swap(Vector &other) noexcept(noexcept_swap) {
+        if (this == &other) {
+            return;
+        }
+
+        assert(alloc_traits::propagate_on_container_swap::value ||
+               _alloc == other._alloc);
+
         std::swap(_realloc_policy, other._realloc_policy);
 
         if constexpr (alloc_traits::propagate_on_container_swap::value) {
@@ -794,12 +893,13 @@ public:
     }
 
     /**
-     * Swap the contents of two vectors.
+     * Specialized swap function to swap two vectors. This function calls
+     * swap() on one of the vectors.
      *
      * @param x The first vector to swap.
      * @param y The second vector to swap.
      */
-    friend void swap(Vector &x, Vector &y) {
+    friend void swap(Vector &x, Vector &y) noexcept(Vector::noexcept_swap) {
         x.swap(y);
     }
 private:
@@ -808,9 +908,16 @@ private:
      * destructor when resizing the vector. I.e., check if the elements stored
      * in the vector are both standard layout and trivial.
      */
-    static constexpr bool avoid_init = avoid_init_if_possible &&
+    static constexpr bool avoid_init = AvoidInitIfPossible &&
                                        std::is_standard_layout_v<T> &&
                                        std::is_trivial_v<T>;
+
+    static constexpr bool noexcept_move_assign = 
+        alloc_traits::propagate_on_container_move_assignment::value ||
+        alloc_traits::is_always_equal::value;
+    static constexpr bool noexcept_swap =
+        alloc_traits::propagate_on_container_swap::value ||
+        alloc_traits::is_always_equal::value;
 
     /**
      * Check if the allocator defines the boolean
@@ -836,7 +943,7 @@ private:
      *
      * @param size The number of elements to allocate.
      */
-    T *allocate_ptr(size_type size) {
+    [[nodiscard]] T *allocate_ptr(size_type size) {
         T* data = alloc_traits::allocate(_alloc, size);
         if (!data) {
             throw std::bad_alloc();
@@ -945,23 +1052,48 @@ private:
      * @param new_size The new size of the vector.
      */
     void resize_prepare(size_type new_size) {
-        if (new_size < 0) {
-            throw std::length_error("Vector: new_size < 0");
+        if (new_size <= _capacity) {
+            if (new_size < 0) [[unlikely]] {
+                throw std::length_error("Vector: new_size < 0");
+            }
+            return;
         }
-
-        if (new_size > _capacity) {
+        else {
             if (_realloc_policy) {
                 realloc(_realloc_policy(_capacity, new_size));
             }
             else {
                 throw std::length_error(
-                    "Vector: new_size > _capacity and no realloc policy set");
+                    "Vector: new_size > capacity and no realloc policy set");
+            }
+        }
+    }
+
+    /**
+     * Prepare the vector to be able to add a new element at the end. If the
+     * new size is greater than the current capacity and the vector has a
+     * realloc_policy, the vector is reallocated using the policy.
+     * Otherwise, a std::length_error is thrown.
+     *
+     */
+    void add_back_prepare() {
+        // Optimize for this case.
+        if (_size < _capacity) [[likely]] {
+            return;
+        }
+        else {
+            if (_realloc_policy) {
+                realloc(_realloc_policy(_capacity, _capacity + 1));
+            }
+            else {
+                throw std::length_error(
+                    "Vector: new_size > capacity and no realloc policy set");
             }
         }
     }
 
     realloc_policy _realloc_policy = nullptr;
-    allocator_type _alloc;
+    [[no_unique_address]] allocator_type _alloc;
     size_type _size = 0;
     size_type _capacity = 0;
     T *_data = nullptr;
