@@ -28,11 +28,11 @@ struct Cell {
     using pos_t = int32_t;
     using score_t = int32_t;
 
-    // enum class edit_t : int8_t {
-    //     None,
-    //     M,
-    //     Ins,
-    //     Del};
+    enum class edit_t : int8_t {
+        None,
+        M,
+        Ins,
+        Del};
 
     enum class Matrix : int8_t {
         None,
@@ -50,7 +50,7 @@ struct Cell {
     idx2d_t offset;
     idx2d_t diag;
     pos_t prev_pos;
-    score_t score_diff;
+    edit_t edit_op;
     Matrix from_matrix;
 };
 

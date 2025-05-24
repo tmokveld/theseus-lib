@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <string>
+#include <queue>
+#include <set>
 
 #include "theseus/alignment.h"
 #include "theseus/penalties.h"
@@ -73,7 +75,7 @@ private:
                          Scope::range cells_range,
                          int m,
                          int upper_bound,
-                         int new_score_diff);
+                         Cell::edit_t edit_op);
 
     /**
      * @brief Sparsify the jumps data. This means storing the data in the scratchpad
@@ -97,8 +99,8 @@ private:
                              int shift_factor,
                              int m,
                              int upper_bound,
-                             int new_score_diff,
-                             Cell::Matrix from_matrix);
+                             Cell::Matrix from_matrix,
+                             Cell::edit_t edit_op);
 
     /**
      * @brief Sparsify the indel (coming from I or D) data. This means storing
@@ -122,7 +124,7 @@ private:
                              Scope::range cells_range,
                              int m,
                              int upper_bound,
-                             int added_score_diff);
+                             Cell::edit_t edit_op);
 
     /**
      * @brief Compute the next I matrix for a vertex v. This implies both sparsifying
@@ -172,8 +174,7 @@ private:
     void store_M_jump(Graph::vertex *curr_v,
                       Cell &prev_cell,
                       int prev_pos,
-                      Cell::Matrix from_matrix,
-                      int _score_diff);
+                      Cell::Matrix from_matrix);
 
     /**
      * @brief Invalidate the diagonal associated to a jump in I, activate the newly
@@ -186,8 +187,7 @@ private:
      */
     void store_I_jump(Graph::vertex *curr_v,
                       Cell &prev_cell,
-                      int prev_pos,
-                      Cell::Matrix from_matrix);
+                      int prev_pos);
 
     /**
      * @brief Check and store I jumps (that is, those diagonals that have reached
@@ -292,6 +292,15 @@ private:
      * @param seq Sequence to add
      */
     void add_to_graph(std::string seq);
+
+    /**
+     * @brief Implementation of Dijkstra's algorithm to find the shortest path
+     * between two vertices in a graph.
+     *
+     * @param source // Source vertex
+     * @param sink  // Sink vertex
+     */
+    void dijkstra(int source, int sink, int offset_source, int offset_sink);
 
     int32_t _score = 0;
 
