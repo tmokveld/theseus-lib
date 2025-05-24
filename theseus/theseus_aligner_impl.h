@@ -174,7 +174,8 @@ private:
     void store_M_jump(Graph::vertex *curr_v,
                       Cell &prev_cell,
                       int prev_pos,
-                      Cell::Matrix from_matrix);
+                      Cell::Matrix from_matrix,
+                      Cell::edit_t edit_op);
 
     /**
      * @brief Invalidate the diagonal associated to a jump in I, activate the newly

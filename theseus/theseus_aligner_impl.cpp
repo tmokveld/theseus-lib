@@ -386,7 +386,8 @@ void TheseusAlignerImpl::next_M(int upper_bound,
 void TheseusAlignerImpl::store_M_jump(Graph::vertex* curr_v,
                                       Cell &prev_cell,
                                       int prev_pos,
-                                      Cell::Matrix from_matrix) {
+                                      Cell::Matrix from_matrix,
+                                      Cell::edit_t edit_op) {
 
   // Invalidate the jumping diagonal
   _vertices_data->invalidate_m_jump(_vertices_data->get_id(prev_cell.vertex_id), prev_cell.diag);
@@ -396,7 +397,7 @@ void TheseusAlignerImpl::store_M_jump(Graph::vertex* curr_v,
   Cell new_cell = prev_cell;
   new_cell.from_matrix = from_matrix;
   new_cell.prev_pos = prev_pos;
-  new_cell.edit_op = Cell::edit_t::M;
+  new_cell.edit_op = edit_op;
 
   for (int l = 0; l < num_out_v; ++l) {
     new_cell.vertex_id = curr_v->out_edges[l].to_vertex;
@@ -461,7 +462,7 @@ void TheseusAlignerImpl::check_and_store_jumps(Graph::vertex *curr_v,
     if (curr_j == n && offset <= _seq.size()) {
       from_matrix = curr_wavefront[cell_range.start + l].from_matrix;
       prev_pos = curr_wavefront[cell_range.start + l].prev_pos;
-      store_M_jump(curr_v, curr_wavefront[cell_range.start + l], prev_pos, from_matrix);
+      store_M_jump(curr_v, curr_wavefront[cell_range.start + l], prev_pos, from_matrix, Cell::edit_t::Ins);
       store_I_jump(curr_v, curr_wavefront[cell_range.start + l], prev_pos);
     }
   }
@@ -519,7 +520,7 @@ void TheseusAlignerImpl::extend_diagonal(
 
   // Check jump
   if (j == curr_v->value.size() && curr_cell.offset <= _seq.size() && curr_v->out_edges.size() > 0) {
-    store_M_jump(curr_v, prev_cell, prev_pos, from_matrix);
+    store_M_jump(curr_v, prev_cell, prev_pos, from_matrix, Cell::edit_t::M); // Store the jump in neighbours
   }
 }
 
@@ -594,7 +595,8 @@ void TheseusAlignerImpl::one_backtrace_step(
     // Jump in I
     if (curr_cell.edit_op == Cell::edit_t::Ins) {
       // Compute start and end columns of the insertion
-      int offset_curr_v = _graph._vertices[curr_cell.vertex_id].value.size() - (curr_cell.offset - prev_cell.offset);
+      int curr_col = curr_cell.diag + curr_cell.offset; // Current column
+      int offset_curr_v = curr_col - (curr_cell.offset - prev_cell.offset);
       int offset_prev_v = prev_cell.diag + prev_cell.offset;
       dijkstra(prev_cell.vertex_id, curr_cell.vertex_id, offset_prev_v, offset_curr_v); // Add the necessary jumps
     }
