@@ -37,6 +37,13 @@ public:
      */
     void output_msa_as_fasta(const std::string &output_file);
 
+    /**
+     * @brief Output the resulting graph in GFA format.
+     *
+     * @param output_file
+     */
+    void print_as_gfa(const std::string &output_file);
+
 private:
     /**
      * @brief Initialize the data for a new alignment.

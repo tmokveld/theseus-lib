@@ -3,6 +3,8 @@
 #include<vector>
 #include<string>
 #include<iostream>
+#include<fstream>
+
 #include"theseus/gfa_graph.h"
 
 /**
@@ -71,6 +73,36 @@ class Graph {
                     std::cout << i << "->" << out_v << std::endl;
                 }
             }
+        }
+
+
+        void print_as_gfa(const std::string &output_file) {
+            std::ofstream out(output_file);
+            if (!out.is_open())
+            {
+                throw std::runtime_error("Could not open output file: " + output_file);
+            }
+
+            // Print all nodes as segments
+            for (const auto &vtx : _vertices)
+            {
+                out << "S\t" << vtx.name << "\t" << vtx.value << "\n";
+            }
+
+            // Print all edges as links
+            // Go through all incoming vertices (with this you cover all possible edges,
+            // since the graph is directed)
+            for (const auto &vtx : _vertices)
+            {
+                for (const auto &edge : vtx.in_edges)
+                {
+                    out << "L\t" << _vertices[edge.from_vertex].name << "\t+\t"
+                        << vtx.name << "\t+\t"
+                        << edge.overlap << "M\n";
+                }
+            }
+
+            out.close();
         }
 
     private:

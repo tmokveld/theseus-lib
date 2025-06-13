@@ -8,7 +8,7 @@ Theseus-lib is an optimized library implementing the ideas from the Theseus algo
 2. Mapping to a graph: Alternatively, Theseus can be provided with a graph, a sequence and a starting position and perform global alignment of the given sequence against the given graph, starting at the provided initial position.
 
 <p align = "center">
-<img src = "img/Theseus_green.png" width="750px">
+<img src = "img/Theseus_green.png" width="400px">
 </p>
 
 ### 1.2. What is WFA?
@@ -33,7 +33,7 @@ make
 
 ## 2. Using Theseus
 
-### 2.1. Multiple Sequence Alignment (MSA)
+### 2.1. Multiple Sequence Alignment (MSA) from scratch
 The problem of MSA consists on comparing and aligning a given set of sequences. Given m sequences of length n, finding the optimal alignment of all sequences has an algorithmic cost of O(n^m). For this reason, practical implementations of MSA use several strategies to find good enough solutions to this problem. Lee [] proposed in 2003 the POA approach, which utilizes a Directed Acyclic Graph (DAG) to represent the diverse alignments, compacting redundant information. Its proposal, extended the Smith-Waterman algorithm of sequence-to-sequence alignment to the context of DAGs, converting the MSA problem into a problem of progressively aligning more sequences to the graph reference. At each step, this approach essentially aligns a new sequence to the current DAG, which encapsulates the variation in the sequences processed so far. Theseus is able to perform such an MSA faster, taking advantage of the expected high similarity between the aligned sequences.
 
 STEP 1: Creating the MSA aligner:
@@ -44,18 +44,31 @@ An aligner is the central object in the Theseus library and centralizes all the 
 STEP 2: Adding a new sequence to the POA graph:
 Once the aligner has been created, adding a new sequence to the POA graph is straightforward. You have to call the align() function of the aligner with the new sequence that you want to add. Let alg be your aligner and new_seq be the new sequence. Then you should do:
 ```
-alg.align(new_seq);
+Alignment my_alignment = alg.align(new_seq);
 ```
 
 Importantly, the aligner will return an Alignment object, with CIGAR, path and score, each time that we align a new sequence.
 
-STEP 3: Visualizing the results in fasta format:
+STEP 3.a: Store the results in fasta format:
 Once you have aligned all the sequences, you can visualize the result in fasta format, converting the poa graph into a standard format. To do so, you have to invoke the output_msa_to_fasta() function of your aligner and provide an output file name:
 ```
 alg.output_msa_as_fasta(output_file);
 ```
 
+STEP 3.b: Store the results in GFA format:
+```
+alg.output_as_gfa(output_file);
+```
+
 TODO: Visualize in other format?
+
+### 2.1. Multiple Sequence Alignment (MSA) from a poa graph
+An alternative is to continue an already existing MSA (how do we keep the weight information???)
+TODO: How do we keep weight information???
+TODO: Initial POA graph???
+TODO: Set end vertex???
+
+
 
 
 ### 2.2. Mapping a sequence to a graph

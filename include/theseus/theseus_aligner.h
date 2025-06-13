@@ -36,6 +36,9 @@ public:
     // TODO:
     void output_msa_as_fasta(const std::string &output_file);
 
+    // TODO:
+    void output_as_gfa(const std::string &output_file);
+
 private:
     std::unique_ptr<TheseusAlignerImpl> _aligner_impl;
 };

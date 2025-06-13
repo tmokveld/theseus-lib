@@ -464,6 +464,9 @@ void TheseusAlignerImpl::store_I_jump(Graph::vertex* curr_v,
       int pos_new_cell = _beyond_scope->i_jumps_wf().size();
       _beyond_scope->i_jumps_wf().push_back(new_cell);
       _vertices_data->get_vertex_data(new_cell.vertex_id)._i_jumps_positions[pos_score].push_back(pos_new_cell);
+
+      // If the destination vertex is empty, jump again
+      store_I_jump(curr_v, _beyond_scope->i_jumps_wf()[pos_new_cell], prev_pos, Cell::Matrix::IJumps);
     }
   }
 }
@@ -649,6 +652,10 @@ void TheseusAlignerImpl::output_msa_as_fasta(const std::string &output_file) {
     }
 
     _poa_graph->poa_to_fasta(_seq_ID, output_file);
+}
+
+void TheseusAlignerImpl::print_as_gfa(const std::string &output_file) {
+   _graph.print_as_gfa(output_file);
 }
 
 

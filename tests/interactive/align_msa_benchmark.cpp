@@ -194,5 +194,8 @@ int main(int argc, char *const *argv) {
     // Output the MSA in fasta format
     aligner.output_msa_as_fasta(args.output_file);
 
+    // Output the MSA in GFA format
+    // aligner.print_as_gfa(args.output_file);
+
     return 0;
 }

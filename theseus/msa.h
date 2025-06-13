@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <stack>
-#include <fstream>
+#include <functional>
 
 #include "graph.h"
 #include "../include/theseus/alignment.h"
@@ -504,12 +504,12 @@ namespace theseus {
             }
 
             // Write the MSA in FASTA format
-            int columns = column_index - 2; // Number of columns in the MSA
+            int columns = column_index;   // Number of columns in the MSA
             int rows = num_sequences + 1; // Number of sequences
             std::vector<std::vector<char>> msa(rows, std::vector<char>(columns, '-'));
 
             // Fill the MSA with the aligned sequences (except first and last nodes)
-            for (int l = 1; l < _poa_vertices.size() - 1; ++l) {
+            for (int l = 0; l < _poa_vertices.size(); ++l) {
                 POAVertex &vertex = augmented_poa_graph._poa_vertices[l];
                 int column = node_to_column[l];
 
@@ -534,7 +534,7 @@ namespace theseus {
             }
             for (int i = 0; i < rows; ++i) {
                 out_file << ">Sequence_" << i + 1 << " "; // Sequence ID
-                for (int j = 0; j < columns; ++j) {
+                for (int j = 1; j < columns - 1; ++j) {
                     out_file << msa[i][j];
                 }
                 out_file << "\n"; // New line after each sequence

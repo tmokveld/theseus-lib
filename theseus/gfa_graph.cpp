@@ -353,22 +353,4 @@ namespace theseus {
 		assert(nodeId < gfa_nodes.size());
 		return gfa_nodes[nodeId].name;
 	}
-
-	// if (graphFile.substr(graphFile.size() - 4) == ".gfa" || (graphFile.size() > 7 && graphFile.substr(graphFile.size() - 7) == ".gfa.gz"))
-	// {
-	//     auto graph = GfaGraph::LoadFromFile(graphFile);
-	//     if (loadMxmSeeder)
-	//     {
-	//         std::cout << "Build MUM/MEM seeder from the graph" << std::endl;
-	//         *mxmSeeder = new MEMSeeder { graph, params.seederCachePrefix, params.uniqueMemBonusFactor, params.lowMemoryMEMIndexConstruction, params.MEMindexUsesWaveletTree, params.MEMwindowsize };
-	//     }
-	//     std::cout << "Build alignment graph" << std::endl;
-	//     auto result = DirectedGraph::BuildFromGFA(graph);
-	//     return result;
-	// }
-	// else
-	// {
-	//     std::cerr << "Unknown graph type (" << graphFile << ")" << std::endl;
-	//     std::exit(0);
-	// }
 }
