@@ -18,6 +18,8 @@ namespace theseus {
  */
 class VerticesData {   // TODO: Other name?
 public:
+    using pos_t = int64_t;
+
     struct Segment {
         int32_t start_d;
         int32_t end_d;
@@ -43,10 +45,10 @@ public:
         std::vector<InvalidData> _d2_invalid;
 
         // Scope with the positions of M jumps in the scope previous waves
-        std::vector<std::vector<int32_t>> _m_jumps_positions;
+        std::vector<std::vector<pos_t>> _m_jumps_positions;
 
         // Scope with the positions of I jumps in the scope previous waves
-        std::vector<std::vector<int32_t>> _i_jumps_positions;
+        std::vector<std::vector<pos_t>> _i_jumps_positions;
         // TODO: _i2_jumps_positions
     };
 

@@ -182,7 +182,7 @@ Alignment TheseusAlignerImpl::align(std::string seq, int start_node, int start_o
                                            int upper_bound)
   {
 
-    int len = cells_range.end - cells_range.start, new_col;
+    Cell::pos_t len = cells_range.end - cells_range.start, new_col;
     Cell new_cell;
 
     // Sparsify the active diagonals
@@ -210,7 +210,7 @@ Alignment TheseusAlignerImpl::align(std::string seq, int start_node, int start_o
 
   // Sparsify jumps data
   void TheseusAlignerImpl::sparsify_jumps_data(Cell::CellVector & dense_wf,
-                                               std::vector<int> & jumps_positions,
+                                               std::vector<Cell::pos_t> & jumps_positions,
                                                int offset_increase,
                                                int shift_factor,
                                                int m,
@@ -253,7 +253,7 @@ Alignment TheseusAlignerImpl::align(std::string seq, int start_node, int start_o
                                                int upper_bound)
   {
 
-    int len = cells_range.end - cells_range.start, new_col;
+    Cell::pos_t len = cells_range.end - cells_range.start, new_col;
     Cell new_cell;
 
     // Sparsify the active diagonals
@@ -408,7 +408,7 @@ void TheseusAlignerImpl::next_M(int upper_bound,
 // Store the jump in neighbours
 void TheseusAlignerImpl::store_M_jump(Graph::vertex* curr_v,
                                       Cell &prev_cell,
-                                      int prev_pos,
+                                      Cell::pos_t prev_pos,
                                       Cell::Matrix from_matrix) {
 
   // Invalidate the jumping diagonal
@@ -441,7 +441,7 @@ void TheseusAlignerImpl::store_M_jump(Graph::vertex* curr_v,
 // Store the jump in neighbours
 void TheseusAlignerImpl::store_I_jump(Graph::vertex* curr_v,
                                       Cell& prev_cell,
-                                      int prev_pos,
+                                      Cell::pos_t prev_pos,
                                       Cell::Matrix from_matrix) {
 
   // Invalidate the jumping diagonal
@@ -478,7 +478,7 @@ void TheseusAlignerImpl::check_and_store_jumps(Graph::vertex *curr_v,
                                                Scope::range cell_range)
 {
 
-  int len = cell_range.end - cell_range.start, diag, offset, curr_j, n = curr_v->value.size(), prev_pos;
+  Cell::pos_t len = cell_range.end - cell_range.start, diag, offset, curr_j, n = curr_v->value.size(), prev_pos;
   Cell::Matrix from_matrix;
 
   for (int l = 0; l < len; ++l) {
@@ -534,7 +534,7 @@ void TheseusAlignerImpl::extend_diagonal(
     Cell &curr_cell,
     int v,
     Cell &prev_cell,
-    int prev_pos,
+    Cell::pos_t prev_pos,
     Cell::Matrix from_matrix) {
 
   // Longest Common prefix

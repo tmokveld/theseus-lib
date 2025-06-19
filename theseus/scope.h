@@ -14,13 +14,15 @@ namespace theseus {
 
 class Scope {
 public:
+    using pos_t = int64_t;
+
     /**
      * @brief Struct representing a range of values
      *
      */
     struct range {
-        int32_t start;
-        int32_t end;
+        pos_t start;
+        pos_t end;
     };
 
     // TODO: Prefer this?

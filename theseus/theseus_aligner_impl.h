@@ -106,7 +106,7 @@ private:
      * @param prev_matrix
      */
     void sparsify_jumps_data(Cell::CellVector &dense_wf,
-                             std::vector<int> &jumps_positions,
+                             std::vector<Cell::pos_t> &jumps_positions,
                              int offset_increase,
                              int shift_factor,
                              int m,
@@ -183,7 +183,7 @@ private:
      */
     void store_M_jump(Graph::vertex *curr_v,
                       Cell &prev_cell,
-                      int prev_pos,
+                      Cell::pos_t prev_pos,
                       Cell::Matrix from_matrix);
 
     /**
@@ -197,7 +197,7 @@ private:
      */
     void store_I_jump(Graph::vertex *curr_v,
                       Cell &prev_cell,
-                      int prev_pos,
+                      Cell::pos_t prev_pos,
                       Cell::Matrix from_matrix);
 
     /**
@@ -251,7 +251,7 @@ private:
                          Cell &curr_cell,
                          int v,
                          Cell &prev_cell,
-                         int prev_pos,
+                         Cell::pos_t prev_pos,
                          Cell::Matrix from_matrix);
 
     /**
