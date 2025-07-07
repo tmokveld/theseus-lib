@@ -1,47 +1,72 @@
 #pragma once
 
 #include <memory>
+#include <istream>
 
 #include "theseus/penalties.h"
 #include "theseus/alignment.h"
-#include "gfa_graph.h"
 
 /**
  * TODO:
  *
  */
 
-namespace theseus {
+namespace theseus
+{
 
-class TheseusAlignerImpl; // Forward declaration of the implementation class.
+    class TheseusAlignerImpl; // Forward declaration of the implementation class.
 
-class TheseusAligner {
-public:
-    // Always MSA.
-    TheseusAligner(const Penalties &penalties,
-                   std::string_view seq,
-                   bool score_only);
+    class TheseusAligner
+    {
+    public:
+        /**
+         * TODO:
+         *
+         * @param penalties
+         * @param seq
+         */
+        TheseusAligner(const Penalties &penalties, std::string_view seq);
 
-    TheseusAligner(const Penalties &penalties,
-                   const GfaGraph &gfa_graph,
-                   bool msa,
-                   bool score_only);
+        /**
+         * [description]
+         *
+         * @param penalties
+         * @param gfa_stream
+         */
+        TheseusAligner(const Penalties &penalties, std::istream &gfa_stream);
 
-    ~TheseusAligner();
+        /**
+         * [description]
+         *
+         */
+        ~TheseusAligner();
 
-    // TODO:
-    // To std::string_view
-    Alignment align(std::string seq, int start_node = 0, int start_offset = 0);
+        /**
+         * [description]
+         *
+         * @param seq
+         * @param start_node
+         * @param start_offset
+         * @return Alignment
+         */
+        Alignment align(std::string seq, int start_node = 0, int start_offset = 0);
 
-    // TODO:
-    void output_msa_as_fasta(const std::string &output_file);
+        /**
+         * [description]
+         *
+         * @param output_file
+         */
+        void output_msa_as_fasta(const std::string &output_file);
 
-    // TODO:
-    void output_as_gfa(const std::string &output_file);
+        /**
+         * [description]
+         *
+         * @param output_file
+         */
+        void output_as_gfa(const std::string &output_file);
 
-private:
-    std::unique_ptr<TheseusAlignerImpl> _aligner_impl;
-};
+    private:
+        std::unique_ptr<TheseusAlignerImpl> aligner_impl_;
+    };
 
 } // namespace theseus
-

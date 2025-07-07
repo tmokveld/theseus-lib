@@ -5,8 +5,7 @@
 namespace theseus {
 
 TheseusAligner::TheseusAligner(const Penalties &penalties,
-                               std::string_view seq,
-                               bool score_only) {
+                               std::string_view seq) {
 
     // Create the initial graph
     theseus::Graph G;
@@ -34,7 +33,7 @@ TheseusAligner::TheseusAligner(const Penalties &penalties,
     sink_v.first_poa_vtx = seq.size() + 1;
     G._vertices.push_back(sink_v);
 
-    _aligner_impl = std::make_unique<TheseusAlignerImpl>(penalties, std::move(G), true, score_only);
+    aligner_impl_ = std::make_unique<TheseusAlignerImpl>(penalties, std::move(G), true, score_only);
 }
 
 TheseusAligner::TheseusAligner(const Penalties &penalties,
@@ -43,7 +42,7 @@ TheseusAligner::TheseusAligner(const Penalties &penalties,
                                bool score_only)
 {
     Graph graph(gfa_graph);
-    _aligner_impl = std::make_unique<TheseusAlignerImpl>(penalties, std::move(graph), msa, score_only);
+    aligner_impl_ = std::make_unique<TheseusAlignerImpl>(penalties, std::move(graph), msa, score_only);
 }
 
 TheseusAligner::~TheseusAligner() {}
@@ -57,7 +56,7 @@ TheseusAligner::~TheseusAligner() {}
  * @return Alignment
  */
 Alignment TheseusAligner::align(std::string seq, int start_node, int start_offset) {
-    return _aligner_impl->align(seq, start_node, start_offset);
+    return aligner_impl_->align(seq, start_node, start_offset);
 }
 
 /**
@@ -66,7 +65,7 @@ Alignment TheseusAligner::align(std::string seq, int start_node, int start_offse
  * @param output_file
  */
 void TheseusAligner::output_msa_as_fasta(const std::string &output_file) {
-    _aligner_impl->output_msa_as_fasta(output_file);
+    aligner_impl_->output_msa_as_fasta(output_file);
 }
 
 /**
@@ -75,7 +74,7 @@ void TheseusAligner::output_msa_as_fasta(const std::string &output_file) {
  * @param output_file
  */
 void TheseusAligner::output_as_gfa(const std::string &output_file) {
-    _aligner_impl->print_as_gfa(output_file);
+    aligner_impl_->print_as_gfa(output_file);
 }
 
 // TODO: MSA as POA

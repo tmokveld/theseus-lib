@@ -3,8 +3,6 @@
 #include <vector>
 
 #include "cell.h"
-#include "mem_pool_wavefront.h"
-#include "mem_pool_allocator.h"
 #include "vector.h"
 
 /**

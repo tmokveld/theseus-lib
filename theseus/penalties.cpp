@@ -3,22 +3,22 @@
 namespace theseus {
 
 Penalties::Penalties(penalty_t match, penalty_t mismatch, penalty_t gape)
-    : _type(Type::Linear),
-      _match(match),
-      _mismatch(mismatch),
-      _gapo(0),
-      _gape(gape),
-      _gapo2(0),
-      _gape2(0) {}
+    : type_(Type::Linear),
+      match_(match),
+      mismatch_(mismatch),
+      gapo_(0),
+      gape_(gape),
+      gapo2_(0),
+      gape2_(0) {}
 
 Penalties::Penalties(penalty_t match, penalty_t mismatch, penalty_t gapo, penalty_t gape)
-    : _type(Type::Affine),
-      _match(match),
-      _mismatch(mismatch),
-      _gapo(gapo),
-      _gape(gape),
-      _gapo2(0),
-      _gape2(0) {}
+    : type_(Type::Affine),
+      match_(match),
+      mismatch_(mismatch),
+      gapo_(gapo),
+      gape_(gape),
+      gapo2_(0),
+      gape2_(0) {}
 
 Penalties::Penalties(penalty_t match,
                      penalty_t mismatch,
@@ -26,12 +26,12 @@ Penalties::Penalties(penalty_t match,
                      penalty_t gape,
                      penalty_t gapo2,
                      penalty_t gape2)
-    : _type(Type::DualAffine),
-      _match(match),
-      _mismatch(mismatch),
-      _gapo(gapo),
-      _gape(gape),
-      _gapo2(gapo2),
-      _gape2(gape2) {}
+    : type_(Type::DualAffine),
+      match_(match),
+      mismatch_(mismatch),
+      gapo_(gapo),
+      gape_(gape),
+      gapo2_(gapo2),
+      gape2_(gape2) {}
 
 }   // namespace theseus

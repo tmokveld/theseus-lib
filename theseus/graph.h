@@ -5,7 +5,7 @@
 #include<iostream>
 #include<fstream>
 
-#include"theseus/gfa_graph.h"
+#include"gfa_graph.h"
 
 /**
  * TODO:

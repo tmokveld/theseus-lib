@@ -309,7 +309,7 @@ public:
      *
      * @param alloc The allocator to use.
      */
-    explicit Vector(const Allocator &alloc) noexcept : _alloc(alloc) {}
+    explicit Vector(const Allocator &alloc) noexcept : alloc_(alloc) {}
 
     /**
      * Create an vector with a given size @p size and optional allocator @p
@@ -320,15 +320,15 @@ public:
      * @param alloc The allocator to use.
      */
     Vector(size_type size, const Allocator &alloc = Allocator())
-        : _alloc(alloc), _size(size), _capacity(size) {
+        : alloc_(alloc), size_(size), capacity_(size) {
 
         if (size < 0) {
             throw std::length_error("Vector: size < 0");
         }
 
-        _data = allocate_ptr(_capacity);
+        data_ = allocate_ptr(capacity_);
 
-        default_construct_elements(_data, _size);
+        default_construct_elements(data_, size_);
     }
 
     /**
@@ -342,14 +342,14 @@ public:
      * @param alloc The allocator to use (optional).
      */
     Vector(size_type size, const T &value, const Allocator &alloc = Allocator())
-        : _alloc(alloc), _size(size), _capacity(size) {
+        : alloc_(alloc), size_(size), capacity_(size) {
 
         if (size < 0) {
             throw std::length_error("Vector: size < 0");
         }
 
-        _data = allocate_ptr(_capacity);
-        copy_construct_elements<true>(_data, &value, _size);
+        data_ = allocate_ptr(capacity_);
+        copy_construct_elements<true>(data_, &value, size_);
     }
 
     /**
@@ -360,12 +360,12 @@ public:
      * @param other Source vector to copy.
      */
     Vector(const Vector &other)
-        : _realloc_policy(other._realloc_policy),
-          _alloc(alloc_traits::select_on_container_copy_construction(other._alloc)),
-          _size(other._size), _capacity(other._capacity) {
+        : realloc_policy_(other.realloc_policy_),
+          alloc_(alloc_traits::select_on_container_copy_construction(other.alloc_)),
+          size_(other.size_), capacity_(other.capacity_) {
 
-        _data = allocate_ptr(_capacity);
-        copy_construct_elements<false>(_data, other._data, _size);
+        data_ = allocate_ptr(capacity_);
+        copy_construct_elements<false>(data_, other.data_, size_);
     }
 
     /**
@@ -374,13 +374,13 @@ public:
      * @param other Source vector to move.
      */
     Vector(Vector &&other) noexcept
-        : _realloc_policy(std::move(other._realloc_policy)),
-          _alloc(std::move(other._alloc)),
-          _size(other._size), _capacity(other._capacity), _data(other._data) {
+        : realloc_policy_(std::move(other.realloc_policy_)),
+          alloc_(std::move(other.alloc_)),
+          size_(other.size_), capacity_(other.capacity_), data_(other.data_) {
 
-        other._size = 0;
-        other._capacity = 0;
-        other._data = nullptr;
+        other.size_ = 0;
+        other.capacity_ = 0;
+        other.data_ = nullptr;
     }
 
     /**
@@ -396,30 +396,30 @@ public:
             return *this;
         }
 
-        destroy_elements(_data, _size);
+        destroy_elements(data_, size_);
 
         constexpr bool propagate_alloc =
             alloc_traits::propagate_on_container_copy_assignment::value;
-        const bool reallocate = (propagate_alloc && _alloc != other._alloc) ||
-                                _capacity != other._capacity;
+        const bool reallocate = (propagate_alloc && alloc_ != other.alloc_) ||
+                                capacity_ != other.capacity_;
 
         if (reallocate) {
-            deallocate_ptr(&_data);
+            deallocate_ptr(&data_);
         }
 
         if constexpr (propagate_alloc) {
-            _alloc = other._alloc;
+            alloc_ = other.alloc_;
         }
 
         if (reallocate) {
-            _capacity = other._capacity;
-            _data = allocate_ptr(_capacity);
+            capacity_ = other.capacity_;
+            data_ = allocate_ptr(capacity_);
         }
 
-        _size = other._size;
-        copy_construct_elements<false>(_data, other._data, _size);
+        size_ = other.size_;
+        copy_construct_elements<false>(data_, other.data_, size_);
 
-        _realloc_policy = other._realloc_policy;
+        realloc_policy_ = other.realloc_policy_;
 
         return *this;
     }
@@ -438,21 +438,21 @@ public:
             return *this;
         }
 
-        destroy_elements(_data, _size);
+        destroy_elements(data_, size_);
 
         // Move the data from other to this.
         auto move_from_other = [&]() {
-            deallocate_ptr(&_data);
+            deallocate_ptr(&data_);
 
-            _realloc_policy = std::move(other._realloc_policy);
-            _alloc = std::move(other._alloc);
-            _size = other._size;
-            _capacity = other._capacity;
-            _data = other._data;
+            realloc_policy_ = std::move(other.realloc_policy_);
+            alloc_ = std::move(other.alloc_);
+            size_ = other.size_;
+            capacity_ = other.capacity_;
+            data_ = other.data_;
 
-            other._size = 0;
-            other._capacity = 0;
-            other._data = nullptr;
+            other.size_ = 0;
+            other.capacity_ = 0;
+            other.data_ = nullptr;
         };
 
         if constexpr (noexcept_move_assign) {
@@ -460,23 +460,23 @@ public:
             move_from_other();
         }
         else {
-            if (_alloc == other._alloc) {
+            if (alloc_ == other.alloc_) {
                 // We can safely move the data.
                 move_from_other();
             }
             else {
                 // We need to copy the elements using the current allocator.
-                _realloc_policy = other._realloc_policy;
+                realloc_policy_ = other.realloc_policy_;
 
-                if (_capacity != other._capacity) {
-                    deallocate_ptr(&_data);
+                if (capacity_ != other.capacity_) {
+                    deallocate_ptr(&data_);
 
-                    _capacity = other._capacity;
-                    _data = allocate_ptr(_capacity);
+                    capacity_ = other.capacity_;
+                    data_ = allocate_ptr(capacity_);
                 }
 
-                _size = other._size;
-                move_construct_elements(_data, other._data, _size);
+                size_ = other.size_;
+                move_construct_elements(data_, other.data_, size_);
             }
         }
 
@@ -488,8 +488,8 @@ public:
      *
      */
     ~Vector() {
-        destroy_elements(_data, _size);
-        deallocate_ptr(&_data);
+        destroy_elements(data_, size_);
+        deallocate_ptr(&data_);
     }
 
     /**
@@ -503,31 +503,31 @@ public:
      * @param new_capacity The new capacity of the vector.
      */
     void realloc(size_type new_capacity) {
-        if (new_capacity == _capacity) {
+        if (new_capacity == capacity_) {
             return;
         }
         else if (new_capacity < 0) {
             throw std::length_error("Vector: new_capacity < 0");
         }
-        else if (new_capacity < _size) {
+        else if (new_capacity < size_) {
             throw std::length_error("Vector: new_capacity < _size");
         }
 
         // if constexpr (allocator_implements_reallocate) {
         //     // realloc provided by the allocator.
-        //     _alloc.reallocate(_data, _size, new_capacity);
+        //     _alloc.reallocate(data_, _size, new_capacity);
         // }
         // else {
 
         T *new_data = allocate_ptr(new_capacity);
 
-        move_construct_elements(new_data, _data, _size);
+        move_construct_elements(new_data, data_, size_);
 
-        destroy_elements(_data, _size);
-        deallocate_ptr(&_data);
+        destroy_elements(data_, size_);
+        deallocate_ptr(&data_);
 
-        _data = new_data;
-        _capacity = new_capacity;
+        data_ = new_data;
+        capacity_ = new_capacity;
     }
 
     /**
@@ -572,14 +572,14 @@ public:
      * @param new_size The new size of the vector.
      */
     void resize_unsafe(size_type new_size) noexcept(avoid_init) {
-        if (new_size > _size) {
-            default_construct_elements(_data + _size, new_size - _size);
+        if (new_size > size_) {
+            default_construct_elements(data_ + size_, new_size - size_);
         }
-        else if (new_size < _size) {
-            destroy_elements(_data + new_size, _size - new_size);
+        else if (new_size < size_) {
+            destroy_elements(data_ + new_size, size_ - new_size);
         }
 
-        _size = new_size;
+        size_ = new_size;
     }
 
     /**
@@ -592,14 +592,14 @@ public:
      * @param value The value to copy initialize all new elements of the vector.
      */
     void resize_unsafe(size_type new_size, const T &value) {
-        if (new_size > _size) {
-            copy_construct_elements<true>(_data + _size, &value, new_size - _size);
+        if (new_size > size_) {
+            copy_construct_elements<true>(data_ + size_, &value, new_size - size_);
         }
-        else if (new_size < _size) {
-            destroy_elements(_data + new_size, _size - new_size);
+        else if (new_size < size_) {
+            destroy_elements(data_ + new_size, size_ - new_size);
         }
 
-        _size = new_size;
+        size_ = new_size;
     }
 
     /**
@@ -608,8 +608,8 @@ public:
      *
      */
     void clear() noexcept {
-        destroy_elements(_data, _size);
-        _size = 0;
+        destroy_elements(data_, size_);
+        size_ = 0;
     }
 
     /**
@@ -684,8 +684,8 @@ public:
      */
     template<class... Args>
     void emplace_back_unsafe(Args&&... args) {
-        args_construct_element(_data + _size, std::forward<Args>(args)...);
-        ++_size;
+        args_construct_element(data_ + size_, std::forward<Args>(args)...);
+        ++size_;
     }
 
     /**
@@ -694,7 +694,7 @@ public:
      *
      */
     void pop_back() {
-        if (_size == 0) {
+        if (size_ == 0) {
             throw std::out_of_range("Vector: pop_back on empty vector");
         }
         pop_back_unsafe();
@@ -706,8 +706,8 @@ public:
      *
      */
     void pop_back_unsafe() noexcept(avoid_init) {
-        --_size;
-        destroy_elements(_data + _size, 1);
+        --size_;
+        destroy_elements(data_ + size_, 1);
     }
 
     /**
@@ -722,7 +722,7 @@ public:
      *
      * @param policy The reallocation policy to set.
      */
-    void set_realloc_policy(realloc_policy policy) { _realloc_policy = policy; }
+    void set_realloc_policy(realloc_policy policy) { realloc_policy_ = policy; }
 
     /**
      * Get the reallocation policy.
@@ -730,7 +730,7 @@ public:
      * @return The reallocation policy.
      */
     [[nodiscard]] realloc_policy get_realloc_policy() const noexcept {
-        return _realloc_policy;
+        return realloc_policy_;
     }
 
     /**
@@ -739,7 +739,7 @@ public:
      * @return The allocator used by the vector.
      */
     [[nodiscard]] allocator_type get_allocator() const noexcept {
-        return _alloc;
+        return alloc_;
     }
 
     /**
@@ -747,29 +747,29 @@ public:
      *
      * @return The size of the vector.
      */
-    [[nodiscard]] size_type size() const noexcept { return _size; }
+    [[nodiscard]] size_type size() const noexcept { return size_; }
 
     /**
      * Get the capacity of the vector.
      *
      * @return The capacity of the vector.
      */
-    [[nodiscard]] size_type capacity() const noexcept { return _capacity; }
+    [[nodiscard]] size_type capacity() const noexcept { return capacity_; }
 
     /**
      * Check if the vector is empty, i.e., size() == 0.
      *
      * @return True if the vector is empty, false otherwise.
      */
-    [[nodiscard]] bool empty() const noexcept { return _size == 0; }
+    [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
 
     /**
      * Access operator.
      *
      * @return A reference to the element at the given index.
      */
-    [[nodiscard]] T &operator[](size_type idx) { return _data[idx]; }
-    [[nodiscard]] const T &operator[](size_type idx) const { return _data[idx]; }
+    [[nodiscard]] T &operator[](size_type idx) { return data_[idx]; }
+    [[nodiscard]] const T &operator[](size_type idx) const { return data_[idx]; }
 
     /**
      * Access operator with bounds checking.
@@ -777,10 +777,10 @@ public:
      * @return A reference to the element at the given index.
      */
     [[nodiscard]] T &at(size_type idx) {
-        if (idx >= _size) {
+        if (idx >= size_) {
             throw std::out_of_range("Vector: index out of range");
         }
-        return _data[idx];
+        return data_[idx];
     }
     [[nodiscard]] const T &at(size_type idx) const {
         return const_cast<T &>(const_cast<const Vector *>(this)->at(idx));
@@ -792,8 +792,8 @@ public:
      *
      * @return Reference to the first element of the vector.
      */
-    [[nodiscard]] T &front() { return _data[0]; }
-    [[nodiscard]] const T &front() const { return _data[0]; }
+    [[nodiscard]] T &front() { return data_[0]; }
+    [[nodiscard]] const T &front() const { return data_[0]; }
 
     /**
      * Reference to the last element of the vector. If the empty() is true,
@@ -801,8 +801,8 @@ public:
      *
      * @return Reference to the last element of the vector.
      */
-    [[nodiscard]] T &back() { return _data[_size - 1]; }
-    [[nodiscard]] const T &back() const { return _data[_size - 1]; }
+    [[nodiscard]] T &back() { return data_[size_ - 1]; }
+    [[nodiscard]] const T &back() const { return data_[size_ - 1]; }
 
     /**
      * Get a pointer to the raw data of the vector. If capacity() is 0, the
@@ -810,8 +810,8 @@ public:
      *
      * @return A pointer to the raw data of the vector.
      */
-    [[nodiscard]] T* data() noexcept { return _data; }
-    [[nodiscard]] const T* data() const noexcept { return _data; }
+    [[nodiscard]] T* data() noexcept { return data_; }
+    [[nodiscard]] const T* data() const noexcept { return data_; }
 
     /**
      * Iterator to the beginning of the vector. If empty() is true, the
@@ -819,8 +819,8 @@ public:
      *
      * @return Iterator to the beginning of the vector.
      */
-    [[nodiscard]] iterator begin() noexcept { return iterator(_data); }
-    [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(_data); }
+    [[nodiscard]] iterator begin() noexcept { return iterator(data_); }
+    [[nodiscard]] const_iterator begin() const noexcept { return const_iterator(data_); }
     [[nodiscard]] const_iterator cbegin() const noexcept { return begin(); }
 
     /**
@@ -830,9 +830,9 @@ public:
      * @return Iterator past the last element of the vector.
      */
     [[nodiscard]]
-    iterator end() noexcept { return iterator(_data + _size); }
+    iterator end() noexcept { return iterator(data_ + size_); }
     [[nodiscard]]
-    const_iterator end() const noexcept { return const_iterator(_data + _size); }
+    const_iterator end() const noexcept { return const_iterator(data_ + size_); }
     [[nodiscard]]
     const_iterator cend() const noexcept { return end(); }
 
@@ -880,17 +880,17 @@ public:
         }
 
         assert(alloc_traits::propagate_on_container_swap::value ||
-               _alloc == other._alloc);
+               alloc_ == other.alloc_);
 
-        std::swap(_realloc_policy, other._realloc_policy);
+        std::swap(realloc_policy_, other.realloc_policy_);
 
         if constexpr (alloc_traits::propagate_on_container_swap::value) {
-            std::swap(_alloc, other._alloc);
+            std::swap(alloc_, other.alloc_);
         }
 
-        std::swap(_size, other._size);
-        std::swap(_capacity, other._capacity);
-        std::swap(_data, other._data);
+        std::swap(size_, other.size_);
+        std::swap(capacity_, other.capacity_);
+        std::swap(data_, other.data_);
     }
 
     /**
@@ -945,7 +945,7 @@ private:
      * @param size The number of elements to allocate.
      */
     [[nodiscard]] T *allocate_ptr(size_type size) {
-        T* data = alloc_traits::allocate(_alloc, size);
+        T* data = alloc_traits::allocate(alloc_, size);
         if (!data) {
             throw std::bad_alloc();
         }
@@ -958,7 +958,7 @@ private:
      * @param ptr Pointer to the memory to deallocate.
      */
     void deallocate_ptr(T **ptr) {
-        alloc_traits::deallocate(_alloc, *ptr, _capacity);
+        alloc_traits::deallocate(alloc_, *ptr, capacity_);
         *ptr = nullptr;
     }
 
@@ -971,7 +971,7 @@ private:
      */
     template<class... Args>
     void args_construct_element(T* pdst, Args&&... args) {
-        alloc_traits::construct(_alloc, std::to_address(pdst), std::forward<Args>(args)...);
+        alloc_traits::construct(alloc_, std::to_address(pdst), std::forward<Args>(args)...);
     }
 
     /**
@@ -987,7 +987,7 @@ private:
         }
 
         for (T* p = pdst; p < pdst + n; ++p) {
-            alloc_traits::construct(_alloc, std::to_address(p));
+            alloc_traits::construct(alloc_, std::to_address(p));
         }
     }
 
@@ -1006,7 +1006,7 @@ private:
     template<bool single_src>
     void copy_construct_elements(T* pdst, const T* psrc, size_type n) {
         for (T* p = pdst; p < pdst + n; ++p) {
-            alloc_traits::construct(_alloc, std::to_address(p), *psrc);
+            alloc_traits::construct(alloc_, std::to_address(p), *psrc);
 
             if constexpr (!single_src) {
                 ++psrc;
@@ -1024,7 +1024,7 @@ private:
      */
     void move_construct_elements(T* pdst, T* psrc, size_type n) {
         for (T* p = pdst; p < pdst + n; ++p, ++psrc) {
-            alloc_traits::construct(_alloc, std::to_address(p), std::move(*psrc));
+            alloc_traits::construct(alloc_, std::to_address(p), std::move(*psrc));
         }
     }
 
@@ -1041,7 +1041,7 @@ private:
         }
 
         for (T* p = pdst; p < pdst + n; ++p) {
-            alloc_traits::destroy(_alloc, std::to_address(p));
+            alloc_traits::destroy(alloc_, std::to_address(p));
         }
     }
 
@@ -1055,15 +1055,15 @@ private:
      * @param new_size The new size of the vector.
      */
     void resize_prepare(size_type new_size) {
-        if (new_size <= _capacity) {
+        if (new_size <= capacity_) {
             if (new_size < 0) [[unlikely]] {
                 throw std::length_error("Vector: new_size < 0");
             }
             return;
         }
         else {
-            if (_realloc_policy) {
-                realloc(_realloc_policy(_capacity, new_size));
+            if (realloc_policy_) {
+                realloc(realloc_policy_(capacity_, new_size));
             }
             else {
                 throw std::length_error(
@@ -1081,12 +1081,12 @@ private:
      */
     void add_back_prepare() {
         // Optimize for this case.
-        if (_size < _capacity) [[likely]] {
+        if (size_ < capacity_) [[likely]] {
             return;
         }
         else {
-            if (_realloc_policy) {
-                realloc(_realloc_policy(_capacity, _capacity + 1));
+            if (realloc_policy_) {
+                realloc(realloc_policy_(capacity_, capacity_ + 1));
             }
             else {
                 throw std::length_error(
@@ -1095,11 +1095,11 @@ private:
         }
     }
 
-    realloc_policy _realloc_policy = nullptr;
-    [[no_unique_address]] allocator_type _alloc;
-    size_type _size = 0;
-    size_type _capacity = 0;
-    T *_data = nullptr;
+    realloc_policy realloc_policy_ = nullptr;
+    [[no_unique_address]] allocator_type alloc_;
+    size_type size_ = 0;
+    size_type capacity_ = 0;
+    T *data_ = nullptr;
 };
 
 } // namespace theseus

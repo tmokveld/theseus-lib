@@ -70,21 +70,21 @@ public:
      *
      * @return The gap type.
      */
-    Type type() const { return _type; }
+    Type type() const { return type_; }
 
     /**
      * Get the match score.
      *
      * @return The match score.
      */
-    penalty_t match() const { return _match; }
+    penalty_t match() const { return match_; }
 
     /**
      * Get the mismatch score.
      *
      * @return The mismatch score.
      */
-    penalty_t mism() const { return _mismatch; }
+    penalty_t mism() const { return mismatch_; }
 
     /**
      * Get the gap open penalty if the gap type is affine or dual affine.
@@ -93,14 +93,14 @@ public:
      * @return The gap open penalty if the gap type is affine or dual affine.
      * Otherwise, return 0.
      */
-    penalty_t gapo() const { return _gapo; }
+    penalty_t gapo() const { return gapo_; }
 
     /**
      * Get the gap extension penalty.
      *
      * @return The gap extension penalty.
      */
-    penalty_t gape() const { return _gape; }
+    penalty_t gape() const { return gape_; }
 
     /**
      * Get the second gap open penalty if the gap type is dual affine.
@@ -109,7 +109,7 @@ public:
      * @return The gap open penalty if the gap type is dual affine. Otherwise,
      * return 0.
      */
-    penalty_t gapo2() const { return _gapo2; }
+    penalty_t gapo2() const { return gapo2_; }
 
     /**
      * Get the second gap extension penalty if the gap type is dual affine.
@@ -118,7 +118,7 @@ public:
      * @return The gap extension penalty if the gap type is dual affine.
      * Otherwise, return 0.
      */
-    penalty_t gape2() const { return _gape; }
+    penalty_t gape2() const { return gape_; }
 
     // Compute the affine gap score of the CIGAR
     int compute_affine_gap_score(const Alignment::Cigar &cigar) {
@@ -134,42 +134,42 @@ public:
                 deletion_open = false;
                 if (!insertion_open) {
                     insertion_open = true;
-                    score += _gapo + _gape; // Gap open penalty for insertion
+                    score += gapo_ + gape_; // Gap open penalty for insertion
                 }
                 else {
-                    score += _gape; // Gap extend penalty for insertion
+                    score += gape_; // Gap extend penalty for insertion
                 }
             }
             else if (op == 'D') {
                 insertion_open = false;
                 if (!deletion_open) {
                     deletion_open = true;
-                    score += _gapo + _gape; // Gap open penalty for deletion
+                    score += gapo_ + gape_; // Gap open penalty for deletion
                 }
                 else {
-                    score += _gape; // Gap extend penalty for deletion
+                    score += gape_; // Gap extend penalty for deletion
                 }
             }
             else if (op == 'M') {
                 insertion_open = false;
                 deletion_open = false;
-                score += _match; // Match score
+                score += match_; // Match score
             }
         }
         return score;
     }
 
 protected:
-    Type _type;
+    Type type_;
 
-    penalty_t _match;
-    penalty_t _mismatch;
+    penalty_t match_;
+    penalty_t mismatch_;
 
-    penalty_t _gapo; // Gap open.
-    penalty_t _gape; // Gap extension.
+    penalty_t gapo_; // Gap open.
+    penalty_t gape_; // Gap extension.
 
-    penalty_t _gapo2; // Gap open for dual gap-affine.
-    penalty_t _gape2; // Gap extension for dual gap-affine.
+    penalty_t gapo2_; // Gap open for dual gap-affine.
+    penalty_t gape2_; // Gap extension for dual gap-affine.
 };
 
 } // namespace theseus
