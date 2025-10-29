@@ -5,45 +5,12 @@
 namespace theseus {
 
 TheseusAligner::TheseusAligner(const Penalties &penalties,
-                               std::string_view seq) {
-
-    // Create the initial graph
-    theseus::Graph G;
-    theseus::Graph::vertex source_v, central_v, sink_v;
-    Graph::edge source_edge, central_edge;
-
-    // Source vertex
-    source_edge.from_vertex = 0;
-    source_edge.to_vertex = 1;
-    source_v.out_edges.push_back(source_edge);
-    source_v.first_poa_vtx = 0;
-    G._vertices.push_back(source_v);
-
-    // Central vertex (initial sequence)
-    central_edge.from_vertex = 1;
-    central_edge.to_vertex = 2;
-    central_v.in_edges.push_back(source_edge);
-    central_v.out_edges.push_back(central_edge);
-    central_v.first_poa_vtx = 1;
-    central_v.value = seq;
-    G._vertices.push_back(central_v);
-
-    // Sink vertex
-    sink_v.in_edges.push_back(central_edge);
-    sink_v.first_poa_vtx = seq.size() + 1;
-    G._vertices.push_back(sink_v);
-
-    aligner_impl_ = std::make_unique<TheseusAlignerImpl>(penalties, std::move(G), true, score_only);
-}
-
-TheseusAligner::TheseusAligner(const Penalties &penalties,
-                               const GfaGraph &gfa_graph,
-                               bool msa,
-                               bool score_only)
+                               std::istream &gfa_stream)
 {
-    Graph graph(gfa_graph);
-    aligner_impl_ = std::make_unique<TheseusAlignerImpl>(penalties, std::move(graph), msa, score_only);
+    Graph graph(gfa_stream);
+    aligner_impl_ = std::make_unique<TheseusAlignerImpl>(penalties, std::move(graph), false);
 }
+
 
 TheseusAligner::~TheseusAligner() {}
 
@@ -55,28 +22,12 @@ TheseusAligner::~TheseusAligner() {}
  * @param start_offset
  * @return Alignment
  */
-Alignment TheseusAligner::align(std::string seq, int start_node, int start_offset) {
+Alignment TheseusAligner::align(
+    std::string_view seq,
+    std::string &start_node,
+    int start_offset) {
+
     return aligner_impl_->align(seq, start_node, start_offset);
 }
-
-/**
- * @brief Output the multiple sequence alignment (MSA) as a row column FASTA file.
- *
- * @param output_file
- */
-void TheseusAligner::output_msa_as_fasta(const std::string &output_file) {
-    aligner_impl_->output_msa_as_fasta(output_file);
-}
-
-/**
- * @brief Output the resulting graph in gfa format.
- *
- * @param output_file
- */
-void TheseusAligner::output_as_gfa(const std::string &output_file) {
-    aligner_impl_->print_as_gfa(output_file);
-}
-
-// TODO: MSA as POA
 
 } // namespace theseus

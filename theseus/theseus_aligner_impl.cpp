@@ -1,17 +1,16 @@
+#include <string_view>
 #include "theseus_aligner_impl.h"
 
 namespace theseus {
 
 TheseusAlignerImpl::TheseusAlignerImpl(const Penalties &penalties,
                                        Graph &&graph,
-                                       bool msa,
-                                       bool score_only) : _penalties(penalties),
+                                       bool msa) : _penalties(penalties),
                                                           _graph(std::move(graph)),
                                                           _is_msa(msa),
-                                                          _is_score_only(score_only),
                                                           _internal_penalties(penalties) {
-    // TODO: Gap-linear, gap-affine and dual affine-gap.
-    const auto n_scores = std::max({penalties.gapo() +_internal_penalties.gape(),
+    // TODO: Gap-linear and dual affine-gap.
+    const auto n_scores = std::max({_internal_penalties.gapo() +_internal_penalties.gape(),
                                   _internal_penalties.gapo() +_internal_penalties.gape(),
                                   _internal_penalties.mism()}) + 1;
 
@@ -29,7 +28,6 @@ TheseusAlignerImpl::TheseusAlignerImpl(const Penalties &penalties,
 }
 
 void TheseusAlignerImpl::new_alignment() {
-    // TODO: Avoid recomputing the max_diag if possible.
     int max_diag = 0, v_n;
     for (int l = 0; l < _graph._vertices.size(); ++l) {
       v_n = _graph._vertices[l].value.size();
@@ -79,8 +77,8 @@ void TheseusAlignerImpl::new_alignment() {
     //   }
 
     // Alignment data
-    _alignment.cigar.path.clear();
-    _alignment.cigar.edit_op.clear();
+    _alignment.path.clear();
+    _alignment.edit_op.clear();
 }
 
 
@@ -121,15 +119,27 @@ void TheseusAlignerImpl::compute_new_wave() {
   }
 }
 
-Alignment TheseusAlignerImpl::align(std::string seq, int start_node, int start_offset)
+
+Alignment TheseusAlignerImpl::align(
+    std::string_view seq,
+    std::string &start_node,
+    int start_offset)
 {
   _scope->new_alignment();
   _beyond_scope->new_alignment();
   _vertices_data->new_alignment();
   _seq = seq;
-  _start_node = start_node;
-  _start_offset = start_offset;
 
+  if (_is_msa) {
+    _start_node = 0;
+    _start_offset = 0;
+  }
+  else {
+    _start_node = _graph.get_id(start_node + "+");
+    _start_offset = start_offset;
+  }
+
+  // Initialize data for the new alignment
   new_alignment();
 
   // TODO: Set initial conditions
@@ -144,7 +154,7 @@ Alignment TheseusAlignerImpl::align(std::string seq, int start_node, int start_o
     // Compute the values of the new wave
     // Initial extend
     if (_score == 0) {
-      extend_diagonal(&_graph._vertices[start_node], _beyond_scope->m_jumps_wf()[0], start_node, _beyond_scope->m_jumps_wf()[0], 0, Cell::Matrix::MJumps);
+      extend_diagonal(&_graph._vertices[_start_node], _beyond_scope->m_jumps_wf()[0], _start_node, _beyond_scope->m_jumps_wf()[0], 0, Cell::Matrix::MJumps);
     }
     compute_new_wave();
 
@@ -156,18 +166,14 @@ Alignment TheseusAlignerImpl::align(std::string seq, int start_node, int start_o
     _vertices_data->new_score(_score);
   }
   _score -= 1;
-  _alignment.score = _score;
 
   // Backtrace
   _seq_ID += 1;
   backtrace(0);
 
-  // Compute the scores with the original penalties
-  _alignment.score = _penalties.compute_affine_gap_score(_alignment.cigar);
-
   // Update the graph in case of MSA
   if (_is_msa) {
-      _poa_graph->add_alignment_poa(_graph, _alignment.cigar, _seq, _seq_ID);
+      _poa_graph->add_alignment_poa(_graph, _alignment, _seq, _seq_ID);
   }
 
   return _alignment;
@@ -498,15 +504,15 @@ void TheseusAlignerImpl::check_and_store_jumps(Graph::vertex *curr_v,
 
 
 // Compute the Longest Common Prefix between two given sequences
-void TheseusAlignerImpl::LCP(std::string &seq_1,
-                             std::string &seq_2,
+void TheseusAlignerImpl::LCP(std::string_view query,
+                             std::string &vertex_text,
                              int &offset,
                              int &j) {
 
     // Find LCP
-    int len_seq_1 = seq_1.size();
-    int len_seq_2 = seq_2.size();
-    while (offset < len_seq_1 && j < len_seq_2 && seq_1[offset] == seq_2[j]) {
+    int len_seq_1 = query.size();
+    int len_seq_2 = vertex_text.size();
+    while (offset < len_seq_1 && j < len_seq_2 && query[offset] == vertex_text[j]) {
         offset = offset + 1;   // Update the f.r. of this diagonal
         j = j + 1;
     }
@@ -560,7 +566,7 @@ void TheseusAlignerImpl::add_matches(
 
   int size = end_matches - start_matches;
   for (int k = 0; k < size; ++k) {
-    _alignment.cigar.edit_op.push_back('M');
+    _alignment.edit_op.push_back('M');
   }
 }
 
@@ -568,21 +574,21 @@ void TheseusAlignerImpl::add_matches(
 // Add a mismatch to our backtracking vector
 void TheseusAlignerImpl::add_mismatch()
 {
-  _alignment.cigar.edit_op.push_back('X');
+  _alignment.edit_op.push_back('X');
 }
 
 
 // Add an insertion to our backtracking vector
 void TheseusAlignerImpl::add_insertion()
 {
-  _alignment.cigar.edit_op.push_back('I');
+  _alignment.edit_op.push_back('I');
 }
 
 
 // Add a deletion to our backtracking vector
 void TheseusAlignerImpl::add_deletion()
 {
-  _alignment.cigar.edit_op.push_back('D');
+  _alignment.edit_op.push_back('D');
 }
 
 
@@ -620,7 +626,7 @@ void TheseusAlignerImpl::one_backtrace_step(
   }
   else {                                            // Jump
     add_matches(prev_cell.offset, curr_cell.offset);                    // Add the necessary matches
-    _alignment.cigar.path.push_back(prev_cell.vertex_id); // Add the new vertex to the path
+    _alignment.path.push_back(prev_cell.vertex_id); // Add the new vertex to the path
     int col_in_prev_v = prev_cell.diag + prev_cell.offset;
     int num_insertions = _graph._vertices[prev_cell.vertex_id].value.size() - col_in_prev_v;
     for (int l = 0; l < num_insertions; ++l) add_insertion();                   // Add the necessary insertions
@@ -635,7 +641,7 @@ void TheseusAlignerImpl::backtrace(int initial_vertex)
 {
 
   Cell curr_pos = _start_pos;
-  _alignment.cigar.path.push_back(curr_pos.vertex_id);
+  _alignment.path.push_back(curr_pos.vertex_id);
   while (curr_pos.prev_pos != -1)
   {
     one_backtrace_step(curr_pos);
@@ -643,22 +649,41 @@ void TheseusAlignerImpl::backtrace(int initial_vertex)
 
   add_matches(0, curr_pos.offset); // Add the matches until the beginning of the sequence
 
-  std::reverse(_alignment.cigar.edit_op.begin(), _alignment.cigar.edit_op.end());
-  std::reverse(_alignment.cigar.path.begin(), _alignment.cigar.path.end());
+  std::reverse(_alignment.edit_op.begin(), _alignment.edit_op.end());
+  std::reverse(_alignment.path.begin(), _alignment.path.end());
 }
 
 
-void TheseusAlignerImpl::output_msa_as_fasta(const std::string &output_file) {
-    if (!_is_msa) {
-        throw std::runtime_error("Cannot output MSA as FASTA when not in MSA mode.");
+// Output functions
+// Print as GFA
+void TheseusAlignerImpl::print_as_gfa(std::ofstream &out_stream) {
+  _graph.print_as_gfa(out_stream);
+}
+
+// Print in dot format
+void TheseusAlignerImpl::print_as_dot(std::ofstream &out_stream) {
+  _graph.print_code_graphviz(out_stream);
+}
+
+// Print as msa (can only call from TheseusMSA)
+void TheseusAlignerImpl::print_as_msa(std::ofstream &out_stream) {
+  if (_is_msa) {
+    _poa_graph->poa_to_fasta(_seq_ID, out_stream);
     }
-
-    _poa_graph->poa_to_fasta(_seq_ID, output_file);
+  else {
+    std::cout << "Error: msa output is only available for MSA mode." << std::endl;
+  }
 }
 
-void TheseusAlignerImpl::print_as_gfa(const std::string &output_file) {
-   _graph.print_as_gfa(output_file);
+// Find and return the consensus sequence (can only call from TheseusMSA)
+std::string TheseusAlignerImpl::get_consensus_sequence() {
+  if (_is_msa) {
+    return _poa_graph->poa_to_consensus();
+  }
+  else {
+    std::cout << "Error: consensus sequence is only available for MSA mode." << std::endl;
+    return "";
+  }
 }
-
 
 } // namespace theseus

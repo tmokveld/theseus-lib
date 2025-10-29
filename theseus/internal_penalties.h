@@ -3,8 +3,8 @@
 #include "theseus/penalties.h"
 
 /**
- * A class derived from Penalties that contains the actual penalties used
- * in the alignment algorithm.
+ * A class derived from Penalties that contains the internal penalties used
+ * during alignment.
  *
  */
 
@@ -61,10 +61,8 @@ public:
 
     /**
      * Get the gap open penalty if the gap type is affine or dual affine.
-     * Otherwise, return 0.
      *
      * @return The gap open penalty if the gap type is affine or dual affine.
-     * Otherwise, return 0.
      */
     penalty_t gapo() const { return _gapo; }
 
@@ -77,21 +75,17 @@ public:
 
     /**
      * Get the second gap open penalty if the gap type is dual affine.
-     * Otherwise, return 0.
      *
-     * @return The gap open penalty if the gap type is dual affine. Otherwise,
-     * return 0.
+     * @return The gap open penalty if the gap type is dual affine.
      */
     penalty_t gapo2() const { return _gapo2; }
 
     /**
      * Get the second gap extension penalty if the gap type is dual affine.
-     * Otherwise, return 0.
      *
      * @return The gap extension penalty if the gap type is dual affine.
-     * Otherwise, return 0.
      */
-    penalty_t gape2() const { return _gape; }
+    penalty_t gape2() const { return _gape2; }
 
 private:
     // Diagonal penalties

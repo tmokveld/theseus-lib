@@ -24,25 +24,47 @@ class TheseusAlignerImpl {
 public:
     TheseusAlignerImpl(const Penalties &penalties,
                        Graph &&graph,
-                       bool msa,
-                       bool score_only);
-
-    // TODO:
-    Alignment align(std::string seq, int start_node = 0, int start_offset = 0);
+                       bool msa);
 
     /**
-     * @brief Ouput the POA graph in fasta format
+     * @brief Main alignment function. Aligns the given sequence to the graph
+     * starting at the specified node and offset.
      *
-     * @param output_file
+     * @param seq               Sequence to be aligned
+     * @param start_node        Starting node in the graph
+     * @param start_offset      Starting offset within the starting node
+     * @return                  Alignment object
      */
-    void output_msa_as_fasta(const std::string &output_file);
+    Alignment align(std::string_view seq,
+                    std::string &start_node,
+                    int start_offset = 0);
 
     /**
-     * @brief Output the resulting graph in GFA format.
+     * @brief Output the current graph in GFA format.
      *
-     * @param output_file
+     * @param out_stream  Output stream to write the graph in GFA format
      */
-    void print_as_gfa(const std::string &output_file);
+    void print_as_gfa(std::ofstream &out_stream);
+
+    /**
+     * @brief Output the current MSA in MSA format.
+     *
+     * @param out_stream  Output stream to write the MSA in MSA format
+     */
+    void print_as_msa(std::ofstream &out_stream);
+
+    /**
+     * @brief Return the consensus sequence from the current MSA.
+     *
+     * @return std::string Consensus sequence
+     */
+    std::string get_consensus_sequence();
+
+    /**
+     * @brief Print the graph in dot (graphviz) format
+     *
+     */
+    void print_as_dot(std::ofstream &out_stream);
 
 private:
     /**
@@ -52,7 +74,7 @@ private:
     void new_alignment();
 
     /**
-     * @brief Process a given vertex with a given _score. This means performing
+     * @brief Process a given vertex at a given _score. This means performing
      * the next and extend operations.
      *
      * @param curr_v
@@ -222,10 +244,10 @@ private:
      * @param offset
      * @param j
      */
-    void LCP(std::string &seq_1,
-             std::string &seq_2,
-             int &offset,
-             int &j);
+    void LCP(std::string_view query,
+            std::string &vertex_text,
+            int &offset,
+            int &j);
 
     /**
      * @brief Check the end condition for the alignment.
@@ -302,19 +324,19 @@ private:
      *
      * @param seq Sequence to add
      */
-    void add_to_graph(std::string seq);
+    void add_to_graph(std::string_view seq);
+
 
     int32_t _score = 0;
 
     Penalties _penalties;
     InternalPenalties _internal_penalties;
 
-    Graph _graph;   // TODO:
+    Graph _graph;   // The graph to align to
 
-    std::unique_ptr<POAGraph> _poa_graph; // TODO: Add this to theseus?
+    std::unique_ptr<POAGraph> _poa_graph; // Partial order alignment graph for MSA
 
     bool _is_msa;
-    bool _is_score_only;
     bool _end = false;
     int _end_vertex;
     int _seq_ID = 0;
@@ -322,14 +344,14 @@ private:
     int _start_offset;
     Cell _start_pos;
 
-    std::unique_ptr<ScratchPad> _scratchpad;   // TODO: Scratchpad inside scope?
+    std::unique_ptr<ScratchPad> _scratchpad;
 
     std::unique_ptr<Scope> _scope;
     std::unique_ptr<BeyondScope> _beyond_scope;
 
     std::unique_ptr<VerticesData> _vertices_data;
 
-    std::string _seq;
+    std::string_view _seq;
 
     Alignment _alignment;
 };

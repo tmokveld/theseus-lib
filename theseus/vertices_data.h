@@ -13,43 +13,51 @@ namespace theseus {
 
 /**
  * @brief Class vertices data. It stores the data related to the active vertices,
- * their indexes, the invalidation data and some jumping data.
+ * their indexes, the invalid diagonals and some jumping data.
  *
  */
-class VerticesData {   // TODO: Other name?
+class VerticesData {
 public:
     using pos_t = int64_t;
 
     struct Segment {
-        int32_t start_d;
-        int32_t end_d;
+        int32_t start_d;   // Start diagonal of the segment (inclusive)
+        int32_t end_d;     // End diagonal of the segment (inclusive)
     };
 
     struct InvalidData {
-        Segment seg;        // Invalid diagonals
+        Segment seg;        // Segment of invalid diagonals
         int32_t rem_up;     // Remaining scores to grow the segment one diagonal
                             // up
         int32_t rem_down;   // Remaining scores to grow the segment one diagonal
                             // down
     };
 
+
+    /**
+     * @brief Vertex dat structure. It contains:
+     * - Invalid data for the M, I (I2) and D (D2) matrices.
+     * - Positions of the jumps in the MJ and IJ (I2) matrices.
+     */
     struct VertexData {
         Cell::vertex_t vertex_id;
 
         std::vector<InvalidData> _m_invalid;
 
         std::vector<InvalidData> _i_invalid;
-        std::vector<InvalidData> _i2_invalid;
+        // std::vector<InvalidData> _i2_invalid;
 
         std::vector<InvalidData> _d_invalid;
-        std::vector<InvalidData> _d2_invalid;
+        // std::vector<InvalidData> _d2_invalid;
 
         // Scope with the positions of M jumps in the scope previous waves
         std::vector<std::vector<pos_t>> _m_jumps_positions;
 
         // Scope with the positions of I jumps in the scope previous waves
         std::vector<std::vector<pos_t>> _i_jumps_positions;
-        // TODO: _i2_jumps_positions
+
+        // Scope with the positions of I2s jumps in the scope previous waves
+        // std::vector<std::vector<pos_t>> _i2_jumps_positions;
     };
 
     int _nscores;
@@ -67,6 +75,12 @@ public:
         _vertex_to_idx.reserve(nexpected_vertices);
     }
 
+    /**
+     * @brief Clear the previously stored values in the scope to write the
+     * newly relevant data.
+     *
+     * @param score  Current score
+     */
     void new_score(int score) {
         int len = _active_vertices.size();
         int pos_curr_score = get_pos(score);
@@ -91,15 +105,21 @@ public:
     }
 
     /**
-     * @brief Get the vertex id of a given vertex.
+     * @brief Get the id of a given vertex.
      *
-     * @param vtx
-     * @return Cell::vertex_t
+     * @param vtx   Vertex id
+     * @return Cell::vertex_t  Index of the vertex in the active vertices
      */
     Cell::vertex_t get_id(int vtx) {
         return _vertex_to_idx[vtx];
     }
 
+    /**
+     * @brief Get the vertex id of a given vertex.
+     *
+     * @param idx   Index of the vertex in the active vertices
+     * @return Cell::vertex_t  Vertex id
+     */
     Cell::vertex_t get_vertex_id(int idx) {
         return _active_vertices[idx].vertex_id;
     }
@@ -107,8 +127,8 @@ public:
     /**
      * @brief Get the vertex data of a given vertex.
      *
-     * @param vtx
-     * @return VertexData&
+     * @param vtx  Vertex id
+     * @return VertexData&  Data of the vertex
      */
     VertexData &get_vertex_data(int vtx) {
         return _active_vertices[_vertex_to_idx[vtx]];
@@ -118,7 +138,7 @@ public:
      * @brief Get the position in the scope of a given score.
      *
      * @param score
-     * @return int
+     * @return int  Position in the scope (it ranges [0, _nscores-1])
      */
     int get_pos(int score) {
         return score%_nscores;
@@ -127,7 +147,7 @@ public:
     /**
      * @brief Get the number of scores.
      *
-     * @return int
+     * @return int Number of scores
      */
     int get_n_scores() {
         return _nscores;
@@ -227,10 +247,9 @@ public:
             auto &vdata = _active_vertices[l];
             expand_invalid_vector(vdata._m_invalid, _penalties.gape(), _penalties.gape());
             expand_invalid_vector(vdata._i_invalid, _penalties.gape(), _penalties.gape());
-            // TODO:
-            // expand_invalid_vector(vdata._i2_invalid, TODO, TODO);
             expand_invalid_vector(vdata._d_invalid, _penalties.gape(), _penalties.gape());
-            // TODO:
+
+            // expand_invalid_vector(vdata._i2_invalid, TODO, TODO);
             // expand_invalid_vector(vdata._d2_invalid, TODO, TODO);
         }
     }
@@ -247,13 +266,12 @@ public:
             compact_invalid_vector(_active_vertices[l]._i_invalid,
                                    _penalties.gape(),
                                    _penalties.gape());
-            // TODO:
-            // compact_invalid_vector(_active_vertices[l]._i2_invalid, TODO,
-            // TODO);
             compact_invalid_vector(_active_vertices[l]._d_invalid,
                                    _penalties.gape(),
                                    _penalties.gape());
-            // TODO:
+
+            // compact_invalid_vector(_active_vertices[l]._i2_invalid, TODO,
+            // TODO);
             // compact_invalid_vector(_active_vertices[l]._d2_invalid, TODO,
             // TODO);
         }
@@ -261,21 +279,20 @@ public:
 
     /**
      * @brief Invalidate a diagonal "diag" in vertex located at index "idx" and
-     * for matrix i. This happens when a jump is performed in the i matrix.
+     * for matrix I. This happens when a jump is performed in the I matrix.
      *
      * @param idx
      * @param diag
      */
     void invalidate_i_jump(int idx, int diag) {
         VertexData &vdata = _active_vertices[idx];
-
         InvalidData new_invalid;
 
+        // New invalid in M
         new_invalid.rem_down = _penalties.gapo() + _penalties.gape();
         new_invalid.rem_up = _penalties.gape();
         new_invalid.seg.start_d = diag;
         new_invalid.seg.end_d = diag;
-
         vdata._m_invalid.push_back(new_invalid);
 
         // New invalid in I
@@ -302,17 +319,16 @@ public:
      */
     void invalidate_m_jump(int idx, int diag) {
         VertexData &vdata = _active_vertices[idx];
-
         InvalidData new_invalid;
 
+        // New invalid in M
         new_invalid.rem_down = _penalties.gapo() + _penalties.gape();
         new_invalid.rem_up = _penalties.gapo() + _penalties.gape();
         new_invalid.seg.start_d = diag;
         new_invalid.seg.end_d = diag;
-
         vdata._m_invalid.push_back(new_invalid);
 
-        // New invalid in I
+        // New invalid in I (initially empty)
         new_invalid.rem_down = 2 * (_penalties.gapo() + _penalties.gape());
         new_invalid.rem_up = _penalties.gapo() + _penalties.gape();
         new_invalid.seg.start_d = diag + 1;
@@ -350,12 +366,12 @@ public:
             else if constexpr (matrix == Cell::Matrix::D) {
                 return vdata._d_invalid;
             }
-            else if constexpr (matrix == Cell::Matrix::I2) {
-                return vdata._i2_invalid;
-            }
-            else if constexpr (matrix == Cell::Matrix::D2) {
-                return vdata._d2_invalid;
-            }
+            // else if constexpr (matrix == Cell::Matrix::I2) {
+            //     return vdata._i2_invalid;
+            // }
+            // else if constexpr (matrix == Cell::Matrix::D2) {
+            //     return vdata._d2_invalid;
+            // }
             else {
                 static_assert([]{ return false; }(), "Unsupported matrix type");
             }

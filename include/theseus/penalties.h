@@ -4,11 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "theseus/alignment.h"
-
 /**
- * A class containing the penalties for the alignment algorithm. The objective
- * function is to minimize the score.
+ * Class containing the penalties for the alignment algorithm. The objective
+ * function is to minimize the alignment score.
  *
  */
 
@@ -25,7 +23,7 @@ public:
     };
 
     /**
-     * Create a Gap-Linear penalty object.
+     * Create a Linear-Gaps penalty object.
      *
      * @param match The match score.
      * @param mismatch The mismatch score.
@@ -36,7 +34,7 @@ public:
               penalty_t gape);
 
     /**
-     * Create a Gap-Affine penalty object.
+     * Create an Affine-Gap penalty object.
      *
      * @param match The match score.
      * @param mismatch The mismatch score.
@@ -49,7 +47,7 @@ public:
               penalty_t gape);
 
     /**
-     * Create a Dual Gap-Affine penalty object.
+     * Create a Dual Affine-Gap penalty object.
      *
      * @param match The match score.
      * @param mismatch The mismatch score.
@@ -120,50 +118,12 @@ public:
      */
     penalty_t gape2() const { return gape_; }
 
-    // Compute the affine gap score of the CIGAR
-    int compute_affine_gap_score(const Alignment::Cigar &cigar) {
-        int score = 0;
-        bool insertion_open = false, deletion_open = false;
-        for (const auto &op : cigar.edit_op) {
-            if (op == 'X') {
-                insertion_open = false;
-                deletion_open = false;
-                score += mism(); // Mismatch score
-            }
-            else if (op == 'I') {
-                deletion_open = false;
-                if (!insertion_open) {
-                    insertion_open = true;
-                    score += gapo_ + gape_; // Gap open penalty for insertion
-                }
-                else {
-                    score += gape_; // Gap extend penalty for insertion
-                }
-            }
-            else if (op == 'D') {
-                insertion_open = false;
-                if (!deletion_open) {
-                    deletion_open = true;
-                    score += gapo_ + gape_; // Gap open penalty for deletion
-                }
-                else {
-                    score += gape_; // Gap extend penalty for deletion
-                }
-            }
-            else if (op == 'M') {
-                insertion_open = false;
-                deletion_open = false;
-                score += match_; // Match score
-            }
-        }
-        return score;
-    }
 
 protected:
     Type type_;
 
-    penalty_t match_;
-    penalty_t mismatch_;
+    penalty_t match_; // Match score.
+    penalty_t mismatch_; // Mismatch score.
 
     penalty_t gapo_; // Gap open.
     penalty_t gape_; // Gap extension.

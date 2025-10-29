@@ -1,7 +1,9 @@
 #include "theseus/penalties.h"
 
+// User defined alignment penalties
 namespace theseus {
 
+// Linear gap penalties constructor
 Penalties::Penalties(penalty_t match, penalty_t mismatch, penalty_t gape)
     : type_(Type::Linear),
       match_(match),
@@ -11,6 +13,7 @@ Penalties::Penalties(penalty_t match, penalty_t mismatch, penalty_t gape)
       gapo2_(0),
       gape2_(0) {}
 
+// Affine gap penalties constructor
 Penalties::Penalties(penalty_t match, penalty_t mismatch, penalty_t gapo, penalty_t gape)
     : type_(Type::Affine),
       match_(match),
@@ -20,6 +23,7 @@ Penalties::Penalties(penalty_t match, penalty_t mismatch, penalty_t gapo, penalt
       gapo2_(0),
       gape2_(0) {}
 
+// Dual affine gap penalties constructor
 Penalties::Penalties(penalty_t match,
                      penalty_t mismatch,
                      penalty_t gapo,

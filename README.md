@@ -3,17 +3,19 @@
 ## 1. Introduction
 
 ### 1.1. What is Theseus?
-Theseus-lib is an optimized library implementing the ideas from the Theseus algorithm []. Theseus, in its turn, is a fast, scalable and exact affine-gap sequence-to-graph aligner, based on the WaveFront Alignment algorithm (WFA) []. Notably, Theseus extends the ideas behind WFA's success to the sequence-to-graph framework. In this regard, it also behaves as an output-sensitive algorithm and, thus, its performance really shines when the aligned data shows high levels of similarity. Theseus has been designed as a general purpose aligner, with tow main functionalities:
-1. Multiple Sequence Alignment (MSA): Theseus is capable of performing MSA based on the Partial Order Alignment (POA) approach. That is, the user can provide a set of sequences and Theseus will progressively build a POA graph representing the variation between them in a compact manner.
-2. Mapping to a graph: Alternatively, Theseus can be provided with a graph, a sequence and a starting position and perform global alignment of the given sequence against the given graph, starting at the provided initial position.
+Theseus is a fast, optimal and affine-gap Sequence-to-Graph aligner [1]. It leverages the expected high similarity in the aligned data to accelerate computation and reduce the search space compared to other alternatives. Theseus is a general purpose aligner, providing two main functionalities:
+1. Multiple Sequence Alignment (MSA): Theseus performs MSA of a set of N sequences using the Partial Order Alignment (POA) [2] approach. That is, it progressively builds a partial order graph representing an MSA of a set of given sequences, adding one more sequence to the graph at each iteration.
+2. Aligning to a graph: Alternatively, Theseus can align one or several sequences to a reference graph. The user has to provide an initial position for the alignment to start.
 
 <p align = "center">
-<img src = "img/Theseus_green.png" width="400px">
+<img src = "img/Theseus_green.png" width="300px">
 </p>
+
+Theseus extends the proposal from the Wavefront Alignment algorithm (WFA) [3, 4], originally devised for pairwise sequence alignment, to the context of sequence-to-graph alignment.
 
 ### 1.2. What is WFA?
 TODO: Copiado literalmente de la librería de Santiago. Lo tendría que cambiar o no cuenta como plagio jaja?
-The wavefront alignment (WFA) algorithm is an exact gap-affine algorithm that takes advantage of homologous regions between the sequences to accelerate the alignment process. Unlike traditional dynamic programming algorithms that run in quadratic time complexity, the WFA runs in time O(ns+s^2), proportional to the sequence length n and the alignment score s, using O(s^2) memory (or O(s) using the ultralow/BiWFA mode). Moreover, the WFA algorithm exhibits simple computational patterns that the modern compilers can automatically vectorize for different architectures without adapting the code. To intuitively illustrate why the WFA algorithm is so interesting, look at the following figure. The left panel shows the cells computed by a classical dynamic programming based algorithm (like Smith-Waterman or Needleman Wunsch). In contrast, the right panel shows the cells computed by the WFA algorithm to obtain the same result (i.e., the optimal alignment)
+The wavefront alignment (WFA) algorithm is an exact gap-affine algorithm that takes advantage of homologous regions between the sequences to accelerate the alignment process. Unlike traditional dynamic programming algorithms that run in quadratic time complexity, the WFA runs in time O(ns+s^2), proportional to the sequence length n and the alignment score s, using O(s^2) memory (or O(s) using the ultralow/BiWFA mode). To intuitively illustrate why the WFA algorithm is so interesting, look at the following figure. The left panel shows the cells computed by a classical dynamic programming based algorithm (like Smith-Waterman or Needleman Wunsch). In contrast, the right panel shows the cells computed by the WFA algorithm to obtain the same result (i.e., the optimal alignment)
 
 <p align = "center">
 <img src = "img/wfa.vs.swg.png" width="750px">
@@ -23,7 +25,7 @@ The wavefront alignment (WFA) algorithm is an exact gap-affine algorithm that ta
 Git clone and compile the library, tools, and examples (by default, use `cmake` for the library and benchmark build).
 
 ```
-git clone https://github.com/
+git clone https://github.com/albertjimenezbl/theseus-lib
 cd theseus-lib
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -33,59 +35,66 @@ make
 
 ## 2. Using Theseus
 
-### 2.1. Multiple Sequence Alignment (MSA) from scratch
-The problem of MSA consists on comparing and aligning a given set of sequences. Given m sequences of length n, finding the optimal alignment of all sequences has an algorithmic cost of O(n^m). For this reason, practical implementations of MSA use several strategies to find good enough solutions to this problem. Lee [] proposed in 2003 the POA approach, which utilizes a Directed Acyclic Graph (DAG) to represent the diverse alignments, compacting redundant information. Its proposal, extended the Smith-Waterman algorithm of sequence-to-sequence alignment to the context of DAGs, converting the MSA problem into a problem of progressively aligning more sequences to the graph reference. At each step, this approach essentially aligns a new sequence to the current DAG, which encapsulates the variation in the sequences processed so far. Theseus is able to perform such an MSA faster, taking advantage of the expected high similarity between the aligned sequences.
+### 2.1. Multiple Sequence Alignment (MSA) example
 
-STEP 1: Creating the MSA aligner:
-An aligner is the central object in the Theseus library and centralizes all the alignment calls. It is defined by a set of parameters and has to be created before performing any call: creating the aligner object is the first step if you want to use Theseus. For the use case of MSA, the aligner should be initialized with the following data:
-1) A penalties object, containing the desired penalties for the aligner. This consists in defining the match, mismatch, gap open and gap extend cost.
-2) An initial sequence to create the initial graph.
-
-STEP 2: Adding a new sequence to the POA graph:
-Once the aligner has been created, adding a new sequence to the POA graph is straightforward. You have to call the align() function of the aligner with the new sequence that you want to add. Let alg be your aligner and new_seq be the new sequence. Then you should do:
+This example illustrates how to use Theseus as a Multiple Sequence Aligner. First, include the msa and general headers:
 ```
-Alignment my_alignment = alg.align(new_seq);
+#include "theseus/alignment.h"
+#include "theseus/penalties.h"
+#include "theseus/theseus_msa_aligner.h"
 ```
 
-Importantly, the aligner will return an Alignment object, with CIGAR, path and score, each time that we align a new sequence.
-
-STEP 3.a: Store the results in fasta format:
-Once you have aligned all the sequences, you can visualize the result in fasta format, converting the poa graph into a standard format. To do so, you have to invoke the output_msa_to_fasta() function of your aligner and provide an output file name:
+Then, create and configure a MSA aligner object. This object is defined by two parameters: a set of penalties and an initial sequence behaving as the starting point of the alignment. An example on how to set such parameters and create an MSA object is found in the next code snippet:
 ```
-alg.output_msa_as_fasta(output_file);
+theseus::Penalties penalties(match, mismatch, gap_open, gap_extend);
+theseus::TheseusMSA aligner(penalties, initial_sequence);
 ```
 
-STEP 3.b: Store the results in GFA format:
+Once this is done, we can start adding sequences to our POA graph using the align functionality, that returns an Alignment object with CIGAR, path and score information:
 ```
-alg.output_as_gfa(output_file);
+theseus::Alignment alignment_object = aligner.align(sequence);
 ```
 
-TODO: Visualize in other format?
+Each time a new sequence is added to the POA graph, the graph is updated with the newly found variation (all the insertions, deletions and mismatches of the resulting alignment object).
 
-### 2.1. Multiple Sequence Alignment (MSA) from a poa graph
-An alternative is to continue an already existing MSA (how do we keep the weight information???)
-TODO: How do we keep weight information???
-TODO: Initial POA graph???
-TODO: Set end vertex???
-
-
+Finally, we can output the result in three different formats: a graph in .gfa format, a multiple sequence alignment and a consensus sequence:
+```
+aligner.output_as_gfa(output_file);             // Output the compacted POA graph in .gfa format
+aligner.output_as_msa(output_file);             // Output as a Multiple Sequence Alignment
+sequence = aligner.get_consensus_sequence();    // Find the consensus sequence of the alignment
+```
 
 
 ### 2.2. Mapping a sequence to a graph
 
+This example illustrates how to use Theseus as a general Sequence-to-Graph Aligner. First, include the alignemnt and general headers:
+```
+#include "theseus/alignment.h"
+#include "theseus/penalties.h"
+#include "theseus/theseus_aligner.h"
+```
 
-TODO: Describe alignment to a graph with initial positions.
+Then, create and configure an aligner object. This object is defined by two parameters: a set of penalties and file stream containing a reference graph in .gfa format. An example on how to set such parameters and create an aligner is found in the next code snippet:
+```
+theseus::Penalties penalties(match, mismatch, gap_open, gap_extend);
+theseus::TheseusAligner aligner(penalties, gfa_file_stream);
+```
+
+Once this is done, we can start aligning sequences to the reference graph using the align functionality. **Importantly**, a call to the align function consists of three arguments: the **sequence** to be aligned, the **starting vertex** for the alignment and **starting offset** in that starting vertex. The result of the alignment is an Alignment object with CIGAR, path and score information:
+```
+theseus::Alignment alignment_object = aligner.align(sequence, start_vertex, start_offset);
+```
 
 
 ## <a name="theseus.other.notes"></a> 3. Some technical notes
 
+TODO: Change this?
 - Thanks to Eizenga's formulation, Theseus-lib can operate with any match score. In practice, M=0 is often the most efficient choice.
 
 
 ## <a name="theseus.bugs"></a> 4. REPORTING BUGS AND FEATURE REQUEST
 
-Feedback and bug reporting is highly appreciated. Please report any issue or suggestion on github or email to the main developer (albert.jimenez1@bsc.es). Don't hesitate to contact us
-if:
+Feedback and bug reporting is highly appreciated. Please report any issue or suggestion on github or email to the main developer (albert.jimenez1@bsc.es). Don't hesitate to contact us if:
   - You experience any bug or crash.
   - You want to request a feature or have any suggestion.
   - Your application using the library is running slower than it should or you expected.
@@ -97,13 +106,29 @@ Theseus-lib is distributed under MIT licence.
 
 ## <a name="theseus.authors"></a> 6. AUTHORS
 
-(...)
+Albert Jimenez Blanco (albert.jimenez1@bsc.es) is the main developer and the person you should address your complaints.
+
+Lorién López-Villellas has had major contributions both in the technical implementation of Theseus and the final structure of the library.
+
+Santiago Marco-Sola and Juan Carlos Moure have contributed with fruitful theoretical discussions, helping shape the final version of the algorithm.
 
 ## <a name="theseus.ack"></a> 7. ACKNOWLEDGEMENTS
 
-(...)
+(TODO:)
 
-## <a name="theseus.cite"></a> 8. CITATION
 
-**Albert Jimenez-Blanco, Lorien Lopez-Villellas, Juan Carlos Moure, Miquel Moreto, Santiago Marco-Sola**. ["Fast, Scalable and Affine-Gap Sequence to Graph
-Alignment using Theseus"](). , 2025.
+## <a name="theseus.ref"></a> 8. REFERENCES
+
+1. TODO:
+
+2. **Christopher Lee, Catherine Grasso, and Mark F. Sharlow**. ["Multiple sequence alignment using partial order graphs."](https://doi.org/10.1093/bioinformatics/18.3.452). Bioinformatics, 2002.
+
+3. **Santiago Marco-Sola, Juan Carlos Moure, Miquel Moreto, Antonio Espinosa**. ["Fast gap-affine pairwise alignment using the wavefront algorithm."](https://doi.org/10.1093/bioinformatics/btaa777). Bioinformatics, 2020.
+
+4. **Santiago Marco-Sola, Jordan M Eizenga, Andrea Guarracino, Benedict Paten, Erik Garrison, Miquel Moreto**. ["Optimal gap-affine alignment in O(s) space"](https://doi.org/10.1093/bioinformatics/btad074). Bioinformatics, 2023.
+
+<!--
+## <a name="theseus.cite"></a> 9. CITATION
+
+**Albert Jimenez-Blanco, Lorien Lopez-Villellas, Juan Carlos Moure, Miquel Moreto, Santiago Marco-Sola**. ["Theseus: Fast and Optimal Affine-Gap Sequence-to-Graph Alignment"](). Bioinformatics, 2025. -->
+

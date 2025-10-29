@@ -4,11 +4,11 @@
 #include <vector>
 
 /**
- * TODO:
+ * The scope class manages the temporary wavefront data used during alignment.
+ * That is, it stores the wavefronts and position vectors for each score in a
+ * circular queue.
  *
  */
-
-// TODO: Create cpp.
 
 namespace theseus {
 

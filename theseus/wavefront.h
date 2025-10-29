@@ -2,9 +2,11 @@
 
 /**
  * An array indexed by diagonals of the Dynamic Programming matrix.
- * 0 is the main diagonal (the diagonal of the {0, 0} cell), positive values are
- * above the main diagonal and negative values are below the main diagonal.
- * A wavefront can never have less than 1 diagonals: at least the main diagonal
+ *      - 0 is the main diagonal (the diagonal of the {0, 0} cell).
+ *      - Positive diagonals are above the main diagonal.
+ *      - Negative diagonals are below the main diagonal.
+ *
+ * A wavefront can never have less than 1 diagonal: at least the main diagonal
  * must be present.
  *
  * @tparam T The type of the elements stored in the wavefront.

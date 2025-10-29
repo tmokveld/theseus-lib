@@ -7,7 +7,17 @@
 #include "vector.h"
 
 /**
- * TODO:
+ * Defines the Cell structure used in the Theseus alignment algorithm.
+ *
+ * Fields:
+ * - prev_pos: Position of the cell where the optimal path to the current cell
+ * comes from.
+ * - vertex_id: ID of the vertex in the graph where this cell is located.
+ * - offset: Offset in the query.
+ * - diag: Diagonal in the dynamic programming matrix of the current vertex.
+ * - from_matrix: Matrix from which the current cell was derived (M, I, D, MJumps,
+ *  IJumps).
+ *
  *
  */
 

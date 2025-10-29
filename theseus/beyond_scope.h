@@ -6,7 +6,8 @@
 #include "vector.h"
 
 /**
- * TODO:
+ * Class containing the necessary wavefronts to perform backtrace. These wavefronts
+ * have to be stored in memory until the end of the alignment.
  *
  */
 
@@ -41,12 +42,12 @@ public:
         _m_wf.clear();
         _m_jumps_wf.clear();
         _i_jumps_wf.clear();
+        _i2_jumps_wf.clear();
     }
 
     /**
      * @brief Access the i_jumps wavefront
      *
-     * @param score
      * @return Cell::Wavefront&
      */
     Cell::CellVector &i_jumps_wf() {
@@ -56,7 +57,6 @@ public:
     /**
      * @brief Access the m_jumps wavefront
      *
-     * @param score
      * @return Cell::Wavefront&
      */
     Cell::CellVector &m_jumps_wf() {
@@ -66,7 +66,6 @@ public:
     /**
      * @brief Access the m wavefront
      *
-     * @param score
      * @return Cell::Wavefront&
      */
     Cell::CellVector &m_wf() {
@@ -80,10 +79,10 @@ private:
         return required_size * 2;
     };
 
-    Cell::CellVector _m_wf; // Backtrace wavefront
-    Cell::CellVector _m_jumps_wf;  // Backtrace wavefront
-    Cell::CellVector _i_jumps_wf;  // Backtrace wavefront
-    Cell::CellVector _i2_jumps_wf; // Backtrace wavefront
+    Cell::CellVector _m_wf;        // M structure backtrace wavefront
+    Cell::CellVector _m_jumps_wf;  // M Jumps structure backtrace wavefront
+    Cell::CellVector _i_jumps_wf;  // I Jumps structure backtrace wavefront
+    Cell::CellVector _i2_jumps_wf; // I2 Jumps structure backtrace wavefront
 };
 
 } // namespace theseus

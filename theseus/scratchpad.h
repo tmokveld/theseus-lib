@@ -6,7 +6,12 @@
 #include "cell.h"
 #include "vector.h"
 
-// TODO:
+/* The scratchpad is the main merging data structure of Theseus. It serves as a
+ common coordinate system containing all the possible existing diagonals in any
+ dp matrix computed. The scratchpad allows to combine (in a process that we call
+ sparsify) the data from the depending previous wavefronts yielding a score "s"
+ in a given vertex, into a single wavefront containing their maximum offsets.
+*/
 
 namespace theseus {
 
@@ -48,7 +53,12 @@ public:
     Cell& operator[](diag_type diag) { return _wf[diag]; }
     const Cell& operator[](diag_type diag) const { return _wf[diag]; }
 
-    // TODO:
+    /**
+     * @brief Return the number of active diagonals in the wavefront. That is,
+     * the number of diagonals that have been modified since the last reset.
+     *
+     * @return size_type
+     */
     size_type nactive_diags() {
         return _diags.size();
     }
@@ -71,7 +81,11 @@ public:
         return _wf.max_diag();
     }
 
-    // TODO:
+    /**
+     * @brief Return the active diagonals in the wavefront.
+     *
+     * @return std::span<const diag_type>
+     */
     std::span<const diag_type> active_diags() {
         return std::span<diag_type>(_diags.data(), _diags.data() + _diags.size());
     }

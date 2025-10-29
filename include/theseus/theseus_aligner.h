@@ -7,7 +7,11 @@
 #include "theseus/alignment.h"
 
 /**
- * TODO:
+ * @file theseus_aligner.h
+ * @brief Header file for the TheseusAligner class. This class provides an interface
+ * for aligning sequences to a graph given a starting position using the Theseus
+ * algorithm.
+ *
  *
  */
 
@@ -20,50 +24,31 @@ namespace theseus
     {
     public:
         /**
-         * TODO:
+         * Constructor
          *
-         * @param penalties
-         * @param seq
-         */
-        TheseusAligner(const Penalties &penalties, std::string_view seq);
-
-        /**
-         * [description]
-         *
-         * @param penalties
-         * @param gfa_stream
+         * @param penalties User defined alignment penalties
+         * @param gfa_stream Input stream containing the graph in GFA format
          */
         TheseusAligner(const Penalties &penalties, std::istream &gfa_stream);
 
         /**
-         * [description]
+         * Class destructor
          *
          */
         ~TheseusAligner();
 
         /**
-         * [description]
+         * Main alignment function. Aligns the given sequence to the graph starting
+         * from the specified node and offset.
          *
-         * @param seq
-         * @param start_node
-         * @param start_offset
+         * @param seq Sequence to be aligned
+         * @param start_node Starting node in the graph
+         * @param start_offset Starting offset within the starting node
          * @return Alignment
          */
-        Alignment align(std::string seq, int start_node = 0, int start_offset = 0);
-
-        /**
-         * [description]
-         *
-         * @param output_file
-         */
-        void output_msa_as_fasta(const std::string &output_file);
-
-        /**
-         * [description]
-         *
-         * @param output_file
-         */
-        void output_as_gfa(const std::string &output_file);
+        Alignment align(std::string_view seq,
+                        std::string &start_node,
+                        int start_offset = 0);
 
     private:
         std::unique_ptr<TheseusAlignerImpl> aligner_impl_;

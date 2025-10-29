@@ -5,13 +5,12 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <string_view>
 
-#include "../dp_aligner.h"
+// #include "../dp_aligner.h"
 #include "theseus/alignment.h"
 #include "theseus/penalties.h"
-#include "theseus/theseus_aligner.h"
-#include "../../theseus/msa.h"
-#include "../../theseus/graph.h"
+#include "theseus/theseus_msa_aligner.h"
 
 #include <vector>
 
@@ -28,14 +27,6 @@ struct CMDArgs {
     std::string sequences_file;
     std::string output_file = "msa_output.fasta"; // Default output file for the MSA
 };
-
-/**
- * @brief Create an initial graph for the msa problem
- *
- * @param G
- * @param POAObject
- * @param first_sequence
- */
 
 
 /**
@@ -83,6 +74,9 @@ void read_sequences(
       sequences.push_back(sequence);
     }
 
+    for (int i = 0; i < sequences.size(); ++i) {
+        std::cout << "Sequence " << i << " length: " << sequences[i].size() << std::endl;
+    }
     sequences_file.close();
 }
 
@@ -162,7 +156,8 @@ int main(int argc, char *const *argv) {
 
     // Prepare the data
     std::vector<theseus::Alignment> alignments(sequences.size());
-    theseus::TheseusAligner aligner(penalties, sequences[0], false);
+    std::string_view initial_seq = sequences[0];
+    theseus::TheseusMSA aligner(penalties, initial_seq);
     theseus::Alignment dummy_alg;
 
     // Alignment with Theseus
@@ -188,14 +183,13 @@ int main(int argc, char *const *argv) {
         //         return 1;
         //     }
         // }
-        std::cout << "Score = " << alignments[j].score << std::endl << std::endl;
+        std::cout << "Score = " << alignments[j].compute_affine_gap_score(penalties) << std::endl << std::endl;
     }
 
-    // Output the MSA in fasta format
-    aligner.output_msa_as_fasta(args.output_file);
-
-    // Output the MSA in GFA format
-    // aligner.print_as_gfa(args.output_file);
+    // TODO: Output?
+    // std::ofstream output_file("output.o");
+    // aligner.print_as_dot(output_file);
+    // Print the resulting graph
 
     return 0;
 }

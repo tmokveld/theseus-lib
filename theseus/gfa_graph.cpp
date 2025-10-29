@@ -1,6 +1,5 @@
 // This parser has been adapted from GraphAligner's GFA parser. https://github.com/maickrau/GraphAligner
 
-
 #include <iostream>
 #include <limits>
 #include <fstream>
@@ -10,11 +9,17 @@
 #include "utils.h"
 
 namespace theseus {
-	GfaGraph::GfaGraph(std::istream &gfa_stream)
+	GfaGraph::GfaGraph(std::istream &gfa_stream) // TODO: Necessary?
 	{
 		load_from_stream(gfa_stream);
 	}
 
+	/**
+	 * @brief Load a GFA graph from a stream. Currently, only segments (S) and
+	 * links (L) are supported.
+	 *
+	 * @param gfa_file Input stream containing the graph in GFA format
+	 */
 	void GfaGraph::load_from_stream(std::istream &gfa_file)
 	{
 		std::string line;
@@ -25,7 +30,7 @@ namespace theseus {
 				break;
 
 			// Only Segments and Links are supported
-			if (line.size() == 0 || line[0] != 'S' && line[0] != 'L')
+			if (line.size() == 0 || (line[0] != 'S' && line[0] != 'L'))
 				continue;
 
 			// Parse segment data
@@ -48,6 +53,8 @@ namespace theseus {
 				assert(dna_seq.size() >= 1);
 				gfa_nodes[id].seq = dna_seq; // Store the DNA sequence
 			}
+
+			// Parse link data
 			if (line[0] == 'L')
 			{
 				std::stringstream sstr{line};
@@ -120,18 +127,7 @@ namespace theseus {
 			}
 		}
 
-		for (auto edge : gfa_edges)
-		{
-			auto from = edge.from_node;
-			auto to = edge.to_node;
-			auto overlap = edge.overlap;
-			assert(from < gfa_nodes.size());
-			assert(to < gfa_nodes.size());
-			if (gfa_nodes[from].seq.size() <= overlap || gfa_nodes[to].seq.size() <= overlap)
-			{
-				throw Utils::InvalidGraphException{std::string{"Overlap between nodes " + gfa_nodes[from].name + " and " + gfa_nodes[to].seq + " fully contains one of the nodes. Fix the overlap to be strictly smaller than both nodes"}};
-			}
-		}
+		// Validate that all edges connect existing nodes
 		for (const auto &edge : gfa_edges)
 		{
 			if (edge.from_node >= gfa_nodes.size() || gfa_nodes[edge.from_node].seq.size() == 0)
@@ -149,6 +145,8 @@ namespace theseus {
 	size_t GfaGraph::node_name_to_id(const std::string &name)
 	{
 		auto seq_ptr = name_to_id_.find(name);
+
+		// If the name is not found, add it
 		if (seq_ptr == name_to_id_.end())
 		{
 			// Check that lengths are consistent

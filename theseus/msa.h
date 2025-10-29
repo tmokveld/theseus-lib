@@ -8,6 +8,7 @@
 #include "graph.h"
 #include "../include/theseus/alignment.h"
 
+// Specific POA graph classes. Only used for MSA.
 namespace theseus {
 
     class POAVertex {
@@ -277,7 +278,7 @@ namespace theseus {
         }
 
         void convert_path(
-            Alignment::Cigar &backtrace,
+            Alignment &backtrace,
             std::vector<int> &poa_path,
             Graph &compacted_G
         ) {
@@ -302,8 +303,8 @@ namespace theseus {
         // Add alignment data in the _poa_graph
         void add_alignment_poa(
             Graph &compacted_G,
-            Alignment::Cigar &backtrace,
-            std::string &new_seq,
+            Alignment &backtrace,
+            std::string_view new_seq,
             int seq_ID) {
 
         // Convert the path to the corresponding path in the poa graph
@@ -374,7 +375,7 @@ namespace theseus {
 
 
         /**
-         * @brief TODO:
+         * @brief Create the initial POA graph from the initial graph G.
          *
          */
         void create_initial_graph(theseus::Graph &G)
@@ -421,7 +422,7 @@ namespace theseus {
          *
          * @param output_file
          */
-        void poa_to_fasta(int num_sequences, const std::string &output_file) {
+        void poa_to_fasta(int num_sequences, std::ofstream &out_file) {
             // Create an augmented graph to ensure MSA integrity
             POAGraph augmented_poa_graph;
             augmented_poa_graph._poa_vertices = _poa_vertices;
@@ -528,7 +529,6 @@ namespace theseus {
             }
 
             // Print the result in the output file
-            std::ofstream out_file(output_file);
             if (!out_file.is_open()) {
                 throw std::runtime_error("Could not open output file for writing MSA.");
             }
@@ -541,5 +541,54 @@ namespace theseus {
             }
             out_file.close();
         }
+
+        /**
+         * @brief Print the consensus sequence of the POA graph
+         *
+         */
+        std::string poa_to_consensus() {
+            // Apply heaviest bundle algorithm to find the consensus sequence
+            std::string consensus_sequence = "";
+            int current_vertex = 0; // Start from the source vertex
+
+            while (current_vertex != _end_vtx_poa) {
+                POAVertex &vertex = _poa_vertices[current_vertex];
+
+                // Find the outgoing edge with the maximum weight
+                int max_weight = -1;
+                int next_vertex = -1;
+                for (int edge_idx : vertex.out_edges) {
+                    POAEdge &edge = _poa_edges[edge_idx];
+                    if (edge.weight > max_weight) {
+                        max_weight = edge.weight;
+                        next_vertex = edge.destination;
+                    }
+                }
+
+                // If no outgoing edges, break the loop (should't happen in a well-formed POA graph)
+                if (next_vertex == -1) {
+                    std::cerr << "No outgoing edges from vertex " << current_vertex << ". Ending consensus extraction.\n";
+                    break;
+                }
+
+                // Append the value of the next vertex to the consensus sequence
+                consensus_sequence += _poa_vertices[next_vertex].value;
+
+                // Move to the next vertex
+                current_vertex = next_vertex;
+            }
+
+            return consensus_sequence;
+        }
+
+
+        /**
+         * @brief Print the POA graph in dot format
+         * TODO:
+         */
+        // void poa_to_dot() {
+
+        // }
+
     };
 }
