@@ -13,15 +13,7 @@ Theseus is a fast, optimal and affine-gap Sequence-to-Graph aligner [1]. It leve
 
 Theseus extends the proposal from the Wavefront Alignment algorithm (WFA) [3, 4], originally devised for pairwise sequence alignment, to the context of sequence-to-graph alignment.
 
-### 1.2. What is WFA?
-TODO: Copiado literalmente de la librería de Santiago. Lo tendría que cambiar o no cuenta como plagio jaja?
-The wavefront alignment (WFA) algorithm is an exact gap-affine algorithm that takes advantage of homologous regions between the sequences to accelerate the alignment process. Unlike traditional dynamic programming algorithms that run in quadratic time complexity, the WFA runs in time O(ns+s^2), proportional to the sequence length n and the alignment score s, using O(s^2) memory (or O(s) using the ultralow/BiWFA mode). To intuitively illustrate why the WFA algorithm is so interesting, look at the following figure. The left panel shows the cells computed by a classical dynamic programming based algorithm (like Smith-Waterman or Needleman Wunsch). In contrast, the right panel shows the cells computed by the WFA algorithm to obtain the same result (i.e., the optimal alignment)
-
-<p align = "center">
-<img src = "img/wfa.vs.swg.png" width="750px">
-</p>
-
-### 1.3. Getting started
+### 1.2. Getting started
 Git clone and compile the library, tools, and examples (by default, use `cmake` for the library and benchmark build).
 
 ```

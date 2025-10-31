@@ -4,6 +4,7 @@
 #include <string>
 #include <queue>
 #include <set>
+#include <algorithm>
 
 #include "theseus/alignment.h"
 #include "theseus/penalties.h"
