@@ -35,25 +35,21 @@
 #include <string>
 #include <string_view>
 
-// #include "../dp_aligner.h"
 #include "theseus/alignment.h"
 #include "theseus/penalties.h"
 #include "theseus/theseus_msa_aligner.h"
 
 #include <vector>
 
-// Control of the output.
-#define AVOID_DP 0
-#define AVOID_THESEUS 0
-#define PRINT_ALIGNMENTS 0
-
+// Command line arguments
 struct CMDArgs {
     int match = 0;
     int mismatch = 2;
     int gapo = 3;
     int gape = 1;
+    int output_type = 0;        // 0: MSA, 1: GFA, 2: Consensus, 3: Dot
     std::string sequences_file;
-    std::string output_file = "msa_output.fasta"; // Default output file for the MSA
+    std::string output_file;
 };
 
 
@@ -68,7 +64,7 @@ void read_sequences(
     CMDArgs &args)
 {
 
-    // Read all sequences
+    // Open the file containing the sequences
     std::ifstream sequences_file(args.sequences_file);
 
     if (!sequences_file.is_open()) {
@@ -93,7 +89,7 @@ void read_sequences(
         }
         else
         {
-            sequence += line;
+            sequence += line;   // The sequnce may span several lines
         }
     }
 
@@ -102,9 +98,7 @@ void read_sequences(
       sequences.push_back(sequence);
     }
 
-    for (int i = 0; i < sequences.size(); ++i) {
-        std::cout << "Sequence " << i << " length: " << sequences[i].size() << std::endl;
-    }
+    // Close the file
     sequences_file.close();
 }
 
@@ -113,14 +107,20 @@ void read_sequences(
  * @brief Print the help message.
  */
 void help() {
-    std::cout << "Usage: benchmark [OPTIONS]\n"
+    std::cout << "Usage: theseus_msa [OPTIONS]\n"
                  "Options:\n"
-                 "  -m, --match <int>       The match penalty [default=0]\n"
-                 "  -x, --mismatch <int>    The mismatch penalty [default=2]\n"
-                 "  -o, --gapo <int>        The gap open penalty [default=3]\n"
-                 "  -e, --gape <int>        The gap extension penalty [default=1]\n"
-                 "  -s, --sequences <file>  Dataset file\n"
-                 "  -f, --output <file>     Output file for the MSA\n";
+                 "  -m, --match <int>           The match penalty                                       [default=0]\n"
+                 "  -x, --mismatch <int>        The mismatch penalty                                    [default=2]\n"
+                 "  -o, --gapo <int>            The gap open penalty                                    [default=3]\n"
+                 "  -e, --gape <int>            The gap extension penalty                               [default=1]\n"
+                 "  -t, --output_type <int>     The output format of the multiple alignment             [default=0=MSA]\n"
+                 "                               0: MSA: Standard Multiple Sequence Alignment format,\n"
+                 "                               1: GFA: Output the resulting POA graph in GFA format,\n"
+                 "                               2: Consensus: Output the consensus sequence,\n"
+                 "                               3: Dot: Output in .dot format for visualization purposes.\n"
+                 "                                       Only tractable for small graphs\n"
+                 "  -f, --output <file>         Output file                                             [Required]\n"
+                 "  -s, --sequences <file>      Dataset file                                            [Required]\n";
 }
 
 CMDArgs parse_args(int argc, char *const *argv) {
@@ -128,6 +128,7 @@ CMDArgs parse_args(int argc, char *const *argv) {
                                           {"mismatch", required_argument, 0, 'x'},
                                           {"gapo", required_argument, 0, 'o'},
                                           {"gape", required_argument, 0, 'e'},
+                                          {"output_type", required_argument, 0, 't'},
                                           {"sequences", required_argument, 0, 's'},
                                           {"output", required_argument, 0, 'f'},
                                           {0, 0, 0, 0}};
@@ -136,7 +137,7 @@ CMDArgs parse_args(int argc, char *const *argv) {
 
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "m:x:o:e:s:f:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "m:x:o:e:t:s:f:", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'o':
                 args.gapo = std::stoi(optarg);
@@ -149,6 +150,9 @@ CMDArgs parse_args(int argc, char *const *argv) {
                 break;
             case 'x':
                 args.mismatch = std::stoi(optarg);
+                break;
+            case 't':
+                args.output_type = std::stoi(optarg);
                 break;
             case 's':
                 args.sequences_file = optarg;
@@ -170,12 +174,19 @@ int main(int argc, char *const *argv) {
     // Parsing
     CMDArgs args = parse_args(argc, argv);
 
-    if (args.sequences_file.empty()) {
+    if (args.sequences_file.empty() || args.output_file.empty()) {
         std::cerr << "Missing required arguments\n";
         help();
         return 1;
     }
 
+    // Check ouput type is correct
+    if (args.output_type < 0 || args.output_type > 3) {
+        std::cerr << "Output type must be 0 (MSA), 1 (GFA), 2 (Consensus) or 3 (Dot)\n";
+        return 1;
+    }
+
+    // Define alignment penalties
     theseus::Penalties penalties(args.match, args.mismatch, args.gapo, args.gape);
 
     // Read the sequences for the MSA
@@ -186,38 +197,26 @@ int main(int argc, char *const *argv) {
     std::vector<theseus::Alignment> alignments(sequences.size());
     std::string_view initial_seq = sequences[0];
     theseus::TheseusMSA aligner(penalties, initial_seq);
-    theseus::Alignment dummy_alg;
 
     // Alignment with Theseus
     for (int j = 1; j < sequences.size(); ++j) {
-        std::cout << "Seq " << j << std::endl;
+        std::cout << "Processing sequence " << j << std::endl;
         alignments[j] = aligner.align(sequences[j]);
-        // if (j == 224) {
-        //      for (int l = 0; l < alignments[j].cigar.edit_op.size(); ++l) {
-        //         std::cout << alignments[j].cigar.edit_op[l] << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
-
-        // Check if all sequences match perfectly
-        // for (int l = std::max(0, j - 5); l <= j; ++l) {
-        //     dummy_alg = aligner.align(sequences[j]);
-        //     if (dummy_alg.score != 0) {
-        //         // for (int l = 0; l < dummy_alg.cigar.edit_op.size(); ++l) {
-        //         //     std::cout << dummy_alg.cigar.edit_op[l] << " ";
-        //         // }
-        //         // std::cout << std::endl;
-        //         std::cerr << "Error: The alignment score in sequence " << j << " is: " << dummy_alg.score << "not zero." << std::endl;
-        //         return 1;
-        //     }
-        // }
         std::cout << "Score = " << alignments[j].compute_affine_gap_score(penalties) << std::endl << std::endl;
     }
 
-    // TODO: Output?
-    // std::ofstream output_file("output.o");
-    // aligner.print_as_dot(output_file);
-    // Print the resulting graph
+    // Print the output
+    std::ofstream output_file(args.output_file);
+    if (args.output_type == 0) {
+        aligner.print_as_msa(output_file);
+    } else if (args.output_type == 1) {
+        aligner.print_as_gfa(output_file);
+    } else if (args.output_type == 2) {
+        std::string consensus = aligner.get_consensus_sequence();
+        output_file << ">Consensus\n" << consensus << "\n";
+    } else if (args.output_type == 3) {
+        aligner.print_as_dot(output_file);
+    }
 
     return 0;
 }

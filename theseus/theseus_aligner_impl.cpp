@@ -1,3 +1,31 @@
+/*
+ *                             The MIT License
+ *
+ * Copyright (c) 2024 by Albert Jimenez-Blanco
+ *
+ * This file is part of #################### Theseus Library ####################.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+
+
 #include <string_view>
 #include "theseus_aligner_impl.h"
 
@@ -135,6 +163,7 @@ Alignment TheseusAlignerImpl::align(
     _start_offset = 0;
   }
   else {
+    // TODO: What happens if orientation is reverse? Suppose always forward for now
     _start_node = _graph.get_id(start_node + "+");
     _start_offset = start_offset;
   }
@@ -641,6 +670,7 @@ void TheseusAlignerImpl::backtrace(int initial_vertex)
 {
 
   Cell curr_pos = _start_pos;
+  _alignment.start_offset = curr_pos.diag + curr_pos.offset; // Vertex offset = j
   _alignment.path.push_back(curr_pos.vertex_id);
   while (curr_pos.prev_pos != -1)
   {
@@ -648,6 +678,7 @@ void TheseusAlignerImpl::backtrace(int initial_vertex)
   }
 
   add_matches(0, curr_pos.offset); // Add the matches until the beginning of the sequence
+  _alignment.end_offset = curr_pos.diag + curr_pos.offset;  // Vertex offset = j
 
   std::reverse(_alignment.edit_op.begin(), _alignment.edit_op.end());
   std::reverse(_alignment.path.begin(), _alignment.path.end());
@@ -660,10 +691,12 @@ void TheseusAlignerImpl::print_as_gfa(std::ofstream &out_stream) {
   _graph.print_as_gfa(out_stream);
 }
 
+
 // Print in dot format
 void TheseusAlignerImpl::print_as_dot(std::ofstream &out_stream) {
   _graph.print_code_graphviz(out_stream);
 }
+
 
 // Print as msa (can only call from TheseusMSA)
 void TheseusAlignerImpl::print_as_msa(std::ofstream &out_stream) {
@@ -675,6 +708,7 @@ void TheseusAlignerImpl::print_as_msa(std::ofstream &out_stream) {
   }
 }
 
+
 // Find and return the consensus sequence (can only call from TheseusMSA)
 std::string TheseusAlignerImpl::get_consensus_sequence() {
   if (_is_msa) {
@@ -683,6 +717,78 @@ std::string TheseusAlignerImpl::get_consensus_sequence() {
   else {
     std::cout << "Error: consensus sequence is only available for MSA mode." << std::endl;
     return "";
+  }
+}
+
+
+// Print as GAF
+void TheseusAlignerImpl::print_as_gaf(
+    theseus::Alignment &alignment,
+    std::ostream &out_stream,
+    std::string seq_name) {
+
+  // Field 1: Query name
+  out_stream << seq_name;
+
+  // Field 2: Query length
+  out_stream << "\t" << _seq.size();
+
+  // Field 3: Query start
+  out_stream << "\t" << 0;
+
+  // Field 4: Query end
+  out_stream << "\t" << _seq.size();
+
+  // Field 5: Strand
+  out_stream << "\t" << "+"; // TODO: Support reverse strand
+
+  // Field 6: Alignment path
+  out_stream << "\t";
+  for (int l = 0; l < alignment.path.size(); ++l) {
+    out_stream << ">" << _graph._vertices[alignment.path[l]].name; // TODO: Support orientation
+  }
+
+  // Field 7: Target length
+  int target_length = 0;
+  for (int l = 0; l < alignment.path.size(); ++l) {
+    target_length += _graph._vertices[alignment.path[l]].value.size();
+  }
+
+  // Field 8: Target start
+  out_stream << "\t" << alignment.start_offset;
+
+  // Field 9: Target end
+  out_stream << "\t" << alignment.end_offset;
+
+  // Field 10: Number of matching bases
+  int num_matches = 0;
+  for (int l = 0; l < alignment.edit_op.size(); ++l) {
+    if (alignment.edit_op[l] == 'M') {
+      num_matches += 1;
+    }
+  }
+
+  // Field 11: Alignment block length
+  out_stream << "\t" << alignment.edit_op.size();
+
+  // Field 12: Mapping quality
+  out_stream << "\t" << 255; // TODO: Compute mapping quality
+
+  // Optional fields
+  out_stream << "\t" << "cg:Z:"; // CIGAR string
+  std::string cigar = "";
+  int count = 1;
+  for (int l = 1; l < alignment.edit_op.size(); ++l) {
+    if (alignment.edit_op[l] == alignment.edit_op[l - 1]) {
+      count += 1;
+    }
+    else {
+      cigar += std::to_string(count) + alignment.edit_op[l - 1];
+      count = 1;
+    }
+  }
+  if (alignment.edit_op.size() > 0) {
+    cigar += std::to_string(count) + alignment.edit_op.back();
   }
 }
 

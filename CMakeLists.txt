@@ -46,7 +46,7 @@ option(ENABLE_TESTS "Enable building of tests" ON)
 # Specify include directories
 include_directories(${PROJECT_SOURCE_DIR}/include/)
 
-# Find all source files in the swfa directory
+# Find all source files in the theseus directory
 file(GLOB_RECURSE THESEUS_SOURCES
     "theseus/*.cpp"
 )
@@ -92,6 +92,24 @@ file(GLOB_RECURSE CPP_EXAMPLES
 file(GLOB_RECURSE C_EXAMPLES
     "examples/c/*.c"
 )
+
+
+#
+# TOOLS
+#
+
+# Find all the tools source files
+file(GLOB_RECURSE THESEUS_TOOLS_SOURCES
+    "tools/*.cpp"
+)
+
+# Add executable for each tool
+foreach(tool_source ${THESEUS_TOOLS_SOURCES})
+    get_filename_component(tool_name ${tool_source} NAME_WE)
+    add_executable(${tool_name} ${tool_source})
+    target_link_libraries(${tool_name} PRIVATE ${PROJECT_NAME})
+    set_target_properties(${tool_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
+endforeach()
 
 # Compile tests and add them to CTest
 function(add_tests test_files output_directory is_ctest is_doctest)

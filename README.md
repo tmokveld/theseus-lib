@@ -1,19 +1,32 @@
 # Theseus-lib
 
-## 1. Introduction
+TABLE OF CONTENTS:
 
-### 1.1. What is Theseus?
-Theseus is a fast, optimal and affine-gap Sequence-to-Graph aligner [1]. It leverages the expected high similarity in the aligned data to accelerate computation and reduce the search space compared to other alternatives. Theseus is a general purpose aligner, providing two main functionalities:
-1. Multiple Sequence Alignment (MSA): Theseus performs MSA of a set of N sequences using the Partial Order Alignment (POA) [2] approach. That is, it progressively builds a partial order graph representing an MSA of a set of given sequences, adding one more sequence to the graph at each iteration.
+* [Introduction](#introduction)
+    * [What is Theseus?](#what_is_theseus)
+    * [Getting started](#getting_started)
+* [Using Theseus](#using_theseus)
+    * [Multiple Sequence Alignment (MSA)](#msa_usage)
+    * [Aligning a sequence to a graph](#alignment_usage)
+* [Tools](#theseus_tools)
+* [Reporting Bugs and Feature Request](#theseus_bugs)
+* [License](#theseus_licence)
+* [Authors](#theseus_authors)
+
+## <a name="introduction"></a> 1. Introduction
+
+### <a name="what_is_theseus"></a> 1.1. What is Theseus?
+Theseus is a fast, optimal and affine-gap Sequence-to-Graph aligner. It leverages the expected high similarity in the aligned data to accelerate computation and reduce the search space compared to other alternatives. Theseus is a general purpose aligner, providing two main functionalities:
+1. Multiple Sequence Alignment (MSA): Theseus performs MSA of a set of N sequences using the Partial Order Alignment (POA) approach. That is, it progressively builds a partial order graph representing an MSA of a set of given sequences, adding one more sequence to the graph at each iteration.
 2. Aligning to a graph: Alternatively, Theseus can align one or several sequences to a reference graph. The user has to provide an initial position for the alignment to start.
 
 <p align = "center">
 <img src = "img/Theseus_green.png" width="300px">
 </p>
 
-Theseus extends the proposal from the Wavefront Alignment algorithm (WFA) [3, 4], originally devised for pairwise sequence alignment, to the context of sequence-to-graph alignment.
+Theseus extends the proposal from the Wavefront Alignment algorithm (WFA), originally devised for pairwise sequence alignment, to the context of sequence-to-graph alignment.
 
-### 1.2. Getting started
+### <a name="getting_started"></a> 1.2. Getting started
 Git clone and compile the library, tools, and examples (by default, use `cmake` for the library and benchmark build).
 
 ```
@@ -25,9 +38,9 @@ make
 ```
 
 
-## 2. Using Theseus
+## <a name="using_theseus"></a> 2. Using Theseus
 
-### 2.1. Multiple Sequence Alignment (MSA) example
+### <a name="msa_usage"></a> 2.1. Multiple Sequence Alignment (MSA)
 
 This example illustrates how to use Theseus as a Multiple Sequence Aligner. First, include the msa and general headers:
 ```
@@ -57,9 +70,9 @@ sequence = aligner.get_consensus_sequence();    // Find the consensus sequence o
 ```
 
 
-### 2.2. Mapping a sequence to a graph
+### <a name="alignment_usage"></a> 2.2. Aligning a sequence to a graph
 
-This example illustrates how to use Theseus as a general Sequence-to-Graph Aligner. First, include the alignemnt and general headers:
+This example illustrates how to use Theseus as a general Sequence-to-Graph Aligner. First, include the alignment and general headers:
 ```
 #include "theseus/alignment.h"
 #include "theseus/penalties.h"
@@ -78,13 +91,66 @@ theseus::Alignment alignment_object = aligner.align(sequence, start_vertex, star
 ```
 
 
-## <a name="theseus.other.notes"></a> 3. Some technical notes
+## <a name="theseus_tools"></a> 3.Tools
 
-TODO: Change this?
-- Thanks to Eizenga's formulation, Theseus-lib can operate with any match score. In practice, M=0 is often the most efficient choice.
+The Theseus library implements two minimal tools to use the Theseus algorithm on the MSA and Sequence-to-Graph alignment problems. It is important to note that these tools are not production ready.
+
+### <a name="msa_tool"></a> 3.1. MSA tool: theseus_msa
+
+This example illustrates how to use the **theseus_msa** tool. This tool computes the MSA of the set of sequences in an given input *.fasta* file. The executable is located in the path */build/tools/theseus_msa*:
+```
+cd build/tools/
+```
+
+Select the scoring scheme, set the input and output files and execute the tool. Each execution of *theseus_msa* lets you select the following parameters:
+```
+Options:
+  -m, --match <int>           The match penalty                           [default=0]
+  -x, --mismatch <int>        The mismatch penalty                        [default=2]
+  -o, --gapo <int>            The gap open penalty                        [default=3]
+  -e, --gape <int>            The gap extension penalty                   [default=1]
+  -t, --output_type <int>     The output format of the multiple alignment [default=0=MSA]
+      0: MSA: Standard Multiple Sequence Alignment format,
+      1: GFA: Output the resulting POA graph in GFA format,
+      2: Consensus: Output the consensus sequence,
+      3: Dot: Output in .dot format for visualization purposes.
+              Only tractable for small graphs
+  -f, --output <file>         Output file                                 [Required]
+  -s, --sequences <file>      Dataset file                                [Required]
+```
+
+An example of the execution of *theseus_msa* is shown in the following piece of code
+```
+./theseus_msa -m 0 -x 2 -o 3 -e 1 -t 0 -f output_file.out -s sequences.fasta
+```
 
 
-## <a name="theseus.bugs"></a> 4. REPORTING BUGS AND FEATURE REQUEST
+### <a name="seq_to_graph_tool"></a> 3.2. Seq-to-graph tool: theseus_aligner
+This example illustrates how to use the **theseus_aligner** tool. This tool aligns a set of sequences, given their starting vertices and offsets, to a reference graph. Three input files are required: 1) The reference graph in *.gfa* format, 2) The sequences to be aligned in *.fasta* format, and 3) The set of starting vertices and offsets, in a file containing a line per starting position as *start_vertex start_offset*. The executable is located in the path */build/tools/theseus_aligner*:
+```
+cd build/tools/
+```
+
+Select the scoring scheme, set the input and output files and execute the tool. Each execution of *theseus_aligner* lets you select the following parameters:
+```
+Options:
+  -m, --match <int>            The match penalty               [default=0]
+  -x, --mismatch <int>         The mismatch penalty            [default=2]
+  -o, --gapo <int>             The gap open penalty            [default=3]
+  -e, --gape <int>             The gap extension penalty       [default=1]
+  -g, --graph_file <file>      Graph file in .gfa format       [Required]
+  -s, --sequences_file <file>  Sequences file in .fasta format [Required]
+  -p, --positions_file <file>  Positions file                  [Required]
+  -f, --output_file <file>     Output file                     [Required]
+```
+
+An example of the execution of *theseus_aligner* is shown in the following piece of code
+```
+./theseus_aligner -m 0 -x 2 -o 3 -e 1 -g reference_graph.gfa -s sequences.fasta -p positions.txt -f output.out
+```
+
+
+## <a name="theseus_bugs"></a> 4. REPORTING BUGS AND FEATURE REQUEST
 
 Feedback and bug reporting is highly appreciated. Please report any issue or suggestion on github or email to the main developer (albert.jimenez1@bsc.es). Don't hesitate to contact us if:
   - You experience any bug or crash.
@@ -92,35 +158,19 @@ Feedback and bug reporting is highly appreciated. Please report any issue or sug
   - Your application using the library is running slower than it should or you expected.
   - Need help integrating the library into your tool.
 
-## <a name="theseus.licence"></a> 5. LICENSE
+
+## <a name="theseus_licence"></a> 5. LICENSE
 
 Theseus-lib is distributed under MIT licence.
 
-## <a name="theseus.authors"></a> 6. AUTHORS
+
+## <a name="theseus_authors"></a> 6. AUTHORS
 
 Albert Jimenez Blanco (albert.jimenez1@bsc.es) is the main developer and the person you should address your complaints.
 
 Lorién López-Villellas has had major contributions both in the technical implementation of Theseus and the final structure of the library.
 
-Santiago Marco-Sola and Juan Carlos Moure have contributed with fruitful theoretical discussions, helping shape the final version of the algorithm.
-
-## <a name="theseus.ack"></a> 7. ACKNOWLEDGEMENTS
-
-(TODO:)
-
-
-## <a name="theseus.ref"></a> 8. REFERENCES
-
-1. TODO:
-
-2. **Christopher Lee, Catherine Grasso, and Mark F. Sharlow**. ["Multiple sequence alignment using partial order graphs."](https://doi.org/10.1093/bioinformatics/18.3.452). Bioinformatics, 2002.
-
-3. **Santiago Marco-Sola, Juan Carlos Moure, Miquel Moreto, Antonio Espinosa**. ["Fast gap-affine pairwise alignment using the wavefront algorithm."](https://doi.org/10.1093/bioinformatics/btaa777). Bioinformatics, 2020.
-
-4. **Santiago Marco-Sola, Jordan M Eizenga, Andrea Guarracino, Benedict Paten, Erik Garrison, Miquel Moreto**. ["Optimal gap-affine alignment in O(s) space"](https://doi.org/10.1093/bioinformatics/btad074). Bioinformatics, 2023.
-
-<!--
-## <a name="theseus.cite"></a> 9. CITATION
+<!-- ## <a name="theseus_cite"></a> 7. CITATION
 
 **Albert Jimenez-Blanco, Lorien Lopez-Villellas, Juan Carlos Moure, Miquel Moreto, Santiago Marco-Sola**. ["Theseus: Fast and Optimal Affine-Gap Sequence-to-Graph Alignment"](). Bioinformatics, 2025. -->
 
