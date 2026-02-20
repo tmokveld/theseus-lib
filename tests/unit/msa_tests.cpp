@@ -177,4 +177,47 @@ TEST_CASE("Check MSA aligner") {
         alignment = aligner.align(seq_4);
         CHECK(alignment.compute_affine_gap_score(penalties) == 9); // Check score
     }
+
+    SUBCASE("Align only does not update MSA graph") {
+        std::string initial_seq = "ACCCGTAAAAGGG";
+        std::string seq_a = "ACCCGTCAAAGGG";
+        std::string seq_b = "ACCCGAAGGG";
+
+        theseus::Penalties penalties(0, 2, 3, 1);
+        theseus::TheseusMSA aligner(penalties, initial_seq);
+
+        // Repeated align_only for seq_a should be stable
+        theseus::Alignment a_probe_1 = aligner.align_only(seq_a);
+        CHECK(a_probe_1.compute_affine_gap_score(penalties) == 2);
+        theseus::Alignment a_probe_2 = aligner.align_only(seq_a);
+        CHECK(a_probe_2.compute_affine_gap_score(penalties) == 2);
+
+        // Repeated align_only for seq_b should be stable
+        theseus::Alignment b_probe_1 = aligner.align_only(seq_b);
+        CHECK(b_probe_1.compute_affine_gap_score(penalties) == 6);
+        theseus::Alignment b_probe_2 = aligner.align_only(seq_b);
+        CHECK(b_probe_2.compute_affine_gap_score(penalties) == 6);
+
+        // Add seq_a to the graph and verify that only then it becomes a perfect match
+        theseus::Alignment a_added = aligner.align(seq_a);
+        CHECK(a_added.compute_affine_gap_score(penalties) == 2);
+        theseus::Alignment a_after_add_1 = aligner.align_only(seq_a);
+        CHECK(a_after_add_1.compute_affine_gap_score(penalties) == 0);
+        theseus::Alignment a_after_add_2 = aligner.align_only(seq_a);
+        CHECK(a_after_add_2.compute_affine_gap_score(penalties) == 0);
+
+        // seq_b still behaves like align_only until it is explicitly added.
+        theseus::Alignment b_before_add_1 = aligner.align_only(seq_b);
+        CHECK(b_before_add_1.compute_affine_gap_score(penalties) == 6);
+        theseus::Alignment b_before_add_2 = aligner.align_only(seq_b);
+        CHECK(b_before_add_2.compute_affine_gap_score(penalties) == 6);
+
+        aligner.align(seq_b);
+        theseus::Alignment b_after_add = aligner.align_only(seq_b);
+        CHECK(b_after_add.compute_affine_gap_score(penalties) == 0);
+
+        // Adding seq_b should not regress seq_a
+        theseus::Alignment a_after_b_add = aligner.align_only(seq_a);
+        CHECK(a_after_b_add.compute_affine_gap_score(penalties) == 0);
+    }
 }

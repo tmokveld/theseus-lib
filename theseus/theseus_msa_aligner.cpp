@@ -82,7 +82,20 @@ Alignment TheseusMSA::align(
     std::string_view seq) {
 
     std::string start_node;
-    return msa_aligner_impl_->align(seq, start_node, 0);
+    return msa_aligner_impl_->align(seq, start_node, 0, true);
+}
+
+/**
+ * @brief Align without updating the underlying POA graph.
+ *
+ * @param seq
+ * @return Alignment
+ */
+Alignment TheseusMSA::align_only(
+    std::string_view seq) {
+
+    std::string start_node;
+    return msa_aligner_impl_->align(seq, start_node, 0, false);
 }
 
 /**

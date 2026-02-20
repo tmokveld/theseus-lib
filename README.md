@@ -55,12 +55,19 @@ theseus::Penalties penalties(match, mismatch, gap_open, gap_extend);
 theseus::TheseusMSA aligner(penalties, initial_sequence);
 ```
 
-Once this is done, we can start adding sequences to our POA graph using the align functionality, that returns an Alignment object with CIGAR, path and score information:
+Once this is done, we can start adding sequences to our POA graph using the `align` functionality, that returns an `Alignment` object with CIGAR, path and score information:
 ```
 theseus::Alignment alignment_object = aligner.align(sequence);
 ```
 
 Each time a new sequence is added to the POA graph, the graph is updated with the newly found variation (all the insertions, deletions and mismatches of the resulting alignment object).
+
+If you want to align a sequence against the current MSA graph **without** mutating it, use `align_only`:
+```
+theseus::Alignment probe_alignment = aligner.align_only(sequence);
+```
+
+`align_only` returns the same alignment information (path/CIGAR/score), but does not add the sequence to the POA graph.
 
 Finally, we can output the result in three different formats: a graph in .gfa format, a multiple sequence alignment and a consensus sequence:
 ```
@@ -191,4 +198,3 @@ Lorién López-Villellas has had major contributions both in the technical imple
 <!-- ## <a name="theseus_cite"></a> 7. CITATION
 
 **Albert Jimenez-Blanco, Lorien Lopez-Villellas, Juan Carlos Moure, Miquel Moreto, Santiago Marco-Sola**. ["Theseus: Fast and Optimal Affine-Gap Sequence-to-Graph Alignment"](). Bioinformatics, 2026. -->
-

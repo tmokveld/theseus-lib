@@ -131,7 +131,8 @@ void TheseusAlignerImpl::compute_new_wave() {
 Alignment TheseusAlignerImpl::align(
     std::string_view seq,
     std::string &start_node,
-    int start_offset)
+    int start_offset,
+    bool add_to_graph)
 {
   _scope->new_alignment();
   _beyond_scope->new_alignment();
@@ -177,11 +178,11 @@ Alignment TheseusAlignerImpl::align(
   _score -= 1;
 
   // Backtrace
-  _seq_ID += 1;
   backtrace(0);
 
   // Update the graph in case of MSA
-  if (_is_msa) {
+  if (_is_msa && add_to_graph) {
+      _seq_ID += 1;
       _poa_graph->add_alignment_poa(_graph, _alignment, _seq, _seq_ID);
   }
 

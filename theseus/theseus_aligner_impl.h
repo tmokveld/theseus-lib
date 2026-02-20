@@ -62,11 +62,13 @@ public:
      * @param seq               Sequence to be aligned
      * @param start_node        Starting node in the graph
      * @param start_offset      Starting offset within the starting node
+     * @param add_to_graph      Whether to add the alignment to the POA graph (MSA mode only)
      * @return                  Alignment object
      */
     Alignment align(std::string_view seq,
                     std::string &start_node,
-                    int start_offset = 0);
+                    int start_offset = 0,
+                    bool add_to_graph = true);
 
     /**
      * @brief Output the current graph in GFA format.

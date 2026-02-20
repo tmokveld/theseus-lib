@@ -66,11 +66,17 @@ namespace theseus
          * Add a new sequence to the POA graph, representing the MSA so far.
          *
          * @param seq
-         * @param start_node
-         * @param start_offset
          * @return Alignment
          */
         Alignment align(std::string_view seq);
+
+        /**
+         * Align a sequence against the current POA graph without mutating it.
+         *
+         * @param seq
+         * @return Alignment
+         */
+        Alignment align_only(std::string_view seq);
 
         /**
          * @brief Print the current POA graph as a GFA file.

@@ -63,7 +63,7 @@ Alignment TheseusAligner::align(
     std::string &start_node,
     int start_offset) {
 
-    return aligner_impl_->align(seq, start_node, start_offset);
+    return aligner_impl_->align(seq, start_node, start_offset, false);
 }
 
 } // namespace theseus
