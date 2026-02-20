@@ -162,7 +162,8 @@ Alignment TheseusAlignerImpl::align(
     // Common parameters
     bool reverse_alignment,
     bool density_drop_active,
-    bool lag_pruning_active
+    bool lag_pruning_active,
+    bool add_to_graph
   )
 {
   // MSA_mode: Start position depends on the alignment direction)
@@ -209,10 +210,10 @@ Alignment TheseusAlignerImpl::align(
   }
   _score -= 1;
   // Backtrace
-  _seq_ID += 1;
   if (_alignment.theseus_status == THESEUS_STATUS_ALG_COMPLETED) {
     backtrace();
-    if (_is_msa) {
+    if (_is_msa && add_to_graph) {
+      _seq_ID += 1;
       // Compute the end column of the alignment in the POA graph
       int end_column = _start_pos.offset + _start_pos.diag;
       _poa_graph->add_alignment_poa(_graph, _alignment, _seq, _seq_ID, weight, end_column);

@@ -72,7 +72,10 @@ public:
      * starting at the specified node and offset.
      *
      * @param seq                Sequence to be aligned
+     * @param start_node         Starting node in the graph
+     * @param start_offset       Starting offset within the starting node
      * @param weight             Weight of the sequence to be aligned (used for MSA)
+     * @param add_to_graph       Whether to add the alignment to the POA graph (MSA mode only)
      * @param reverse_alignment  Whether to perform reverse alignment
      * @param is_ends_free       Whether to allow a free end on the "end" of the graph
      *
@@ -88,7 +91,8 @@ public:
                     // Common parameters
                     bool reverse_alignment = false,
                     bool density_drop_active = false,
-                    bool lag_pruning_active = false);
+                    bool lag_pruning_active = false,
+                    bool add_to_graph = true);
 
     /**
      * @brief Output the current graph in GFA format.

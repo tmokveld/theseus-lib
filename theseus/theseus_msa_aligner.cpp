@@ -72,7 +72,19 @@ Alignment TheseusMSA::align(
     int  weight,
     bool lag_pruning_active
 ) {
-    return msa_aligner_impl_->align(seq, 0, 0, weight, false, false, false, lag_pruning_active);
+    return msa_aligner_impl_->align(seq, 0, 0, weight, false, false, false, lag_pruning_active, true);
+}
+
+/**
+ * @brief Align without updating the underlying POA graph.
+ *
+ * @param seq
+ * @return Alignment
+ */
+Alignment TheseusMSA::align_only(
+    std::string_view seq) {
+
+    return msa_aligner_impl_->align(seq, 0, 0, 1, false, false, false, false, false);
 }
 
 /**
