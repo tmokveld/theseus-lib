@@ -129,4 +129,13 @@ void TheseusMSA::print_as_dot(std::ostream &out_stream) {
     msa_aligner_impl_->print_code_graphviz(out_stream);
 }
 
+void TheseusMSA::print_alignment_as_gaf(
+                theseus::Alignment &alignment,
+                std::ostream &out_stream,
+                std::string seq_name,
+                std::unordered_map<NodeId, std::string> &node_names) {
+
+    msa_aligner_impl_->print_as_gaf(alignment, out_stream, seq_name, node_names);
+}
+
 } // namespace theseus

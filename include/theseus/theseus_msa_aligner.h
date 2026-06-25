@@ -124,6 +124,20 @@ namespace theseus
          */
         void print_as_dot(std::ostream &out_stream);
 
+        /**
+         * @brief Print the resulting alignment in GAF format.
+         *
+         * @param alignment Alignment to be printed
+         * @param out_stream Output stream where the alignment will be printed
+         * @param seq_name Query sequence name
+         * @param node_names Graph node names keyed by node id
+         */
+        void print_alignment_as_gaf(
+                theseus::Alignment &alignment,
+                std::ostream &out_stream,
+                std::string seq_name,
+                std::unordered_map<NodeId, std::string> &node_names);
+
 
     private:
         std::unique_ptr<TheseusAlignerImpl> msa_aligner_impl_;
